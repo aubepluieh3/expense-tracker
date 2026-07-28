@@ -36,6 +36,23 @@ export type TransactionRow = {
   created_at: string
 }
 
+export type MonthSummaryRow = {
+  income: number
+  expense: number
+  /** 그 달 수입 − 지출. "잔액"이 아니라 "남은 금액"이다(통장 잔고가 아님). */
+  net: number
+}
+
+export type SalaryWidgetRow = {
+  salary_amount: number
+  salary_date: string
+  spent_since: number
+  remaining: number
+  /** 오늘 이후로 등록해 둔 지출. 남은 돈에서 빼지 않고 따로 표시한다. */
+  upcoming: number
+  next_salary_date: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -72,6 +89,14 @@ export interface Database {
       create_category: {
         Args: { p_type: CategoryType; p_name: string; p_emoji?: string }
         Returns: CategoryRow
+      }
+      get_month_summary: {
+        Args: { p_month: string }
+        Returns: MonthSummaryRow[]
+      }
+      get_salary_widget: {
+        Args: { p_today: string }
+        Returns: SalaryWidgetRow[]
       }
     }
     Enums: Record<string, never>

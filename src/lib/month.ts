@@ -58,3 +58,18 @@ export function dayLabel(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)
   return `${m}월 ${d}일 (${DOW[new Date(y, m - 1, d).getDay()]})`
 }
+
+/** '6.25' */
+export function shortDate(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number)
+  return `${m}.${d}`
+}
+
+/** to − from, 일 단위. 로컬 자정 기준으로 계산해 DST·타임존 영향을 받지 않는다. */
+export function daysBetween(from: string, to: string): number {
+  const [y1, m1, d1] = from.split('-').map(Number)
+  const [y2, m2, d2] = to.split('-').map(Number)
+  const a = Date.UTC(y1, m1 - 1, d1)
+  const b = Date.UTC(y2, m2 - 1, d2)
+  return Math.round((b - a) / 86_400_000)
+}

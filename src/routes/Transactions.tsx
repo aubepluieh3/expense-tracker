@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MonthNavigator } from '@/components/MonthNavigator'
+import { SalaryWidget } from '@/components/SalaryWidget'
+import { MonthSummary } from '@/components/MonthSummary'
 import { TransactionFormSheet } from '@/components/TransactionFormSheet'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { useMonthParam } from '@/hooks/useMonthParam'
@@ -88,6 +90,9 @@ export default function Transactions() {
           </button>
         }
       />
+
+      <SalaryWidget />
+      <MonthSummary month={month} />
 
       {/* 사용자의 대부분은 "전체"로 본다. 필터 줄이 상시로 자리를 차지할 이유가 없다. */}
       {filterOpen && (
