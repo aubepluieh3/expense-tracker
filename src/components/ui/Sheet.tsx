@@ -1,6 +1,12 @@
 import { useEffect } from 'react'
 
-/** 모바일에서는 하단 시트, 데스크톱에서는 가운데 카드로 보이는 오버레이. */
+/**
+ * 모바일에서는 하단 시트, 데스크톱에서는 가운데 카드로 보이는 오버레이.
+ *
+ * 헤더는 항상 `✕ | 제목 | (액션)` 한 가지 형태다. 이전에는 액션이 있으면
+ * ✕ 를 쓰고 없으면 "닫기" 텍스트를 써서, 같은 컴포넌트인데 시트마다 헤더가
+ * 달라 보였다.
+ */
 export function Sheet({
   title,
   onClose,
@@ -36,28 +42,19 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative max-h-[92dvh] w-full max-w-[520px] overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl"
+        className="relative max-h-[92dvh] w-full max-w-[520px] overflow-y-auto rounded-t-sheet bg-surface p-5 sm:rounded-sheet"
       >
-        {action ? (
-          <div className="mb-4 grid grid-cols-[2.5rem_1fr_auto] items-center gap-2">
-            <button
-              onClick={onClose}
-              aria-label="닫기"
-              className="justify-self-start text-lg text-neutral-500 hover:text-neutral-900"
-            >
-              ✕
-            </button>
-            <h2 className="text-center text-base font-semibold text-neutral-900">{title}</h2>
-            {action}
-          </div>
-        ) : (
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-neutral-900">{title}</h2>
-            <button onClick={onClose} className="text-sm text-neutral-500 hover:text-neutral-900">
-              닫기
-            </button>
-          </div>
-        )}
+        <div className="mb-4 grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2">
+          <button
+            onClick={onClose}
+            aria-label="닫기"
+            className="grid size-8 place-items-center justify-self-start rounded-control text-ink-muted transition hover:bg-surface-3 hover:text-ink"
+          >
+            ✕
+          </button>
+          <h2 className="text-center text-label font-semibold text-ink">{title}</h2>
+          <div className="justify-self-end">{action}</div>
+        </div>
         {children}
       </div>
     </div>

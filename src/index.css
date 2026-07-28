@@ -1,11 +1,60 @@
 @import 'tailwindcss';
 
+/*
+  디자인 토큰.
+
+  이 블록이 없던 동안 모든 값을 호출 지점에서 골랐고, 그 결과 같은 역할에
+  다른 값이 붙었다 — 본문 글자가 text-sm(14px)과 text-[15px]로 갈리고,
+  보조 글자색이 neutral-400/500/600/700 네 단계로 흩어졌고, 라운딩이 5종이
+  됐다. 값을 고르는 게 아니라 역할을 고르게 만드는 것이 이 블록의 목적이다.
+
+  Tailwind v4 는 @theme 의 항목을 그대로 유틸리티로 만든다.
+  --color-ink → text-ink / bg-ink / border-ink
+*/
+@theme {
+  /* 잉크 — 글자와 아이콘 */
+  --color-ink: #171717; /* 본문·금액·제목 */
+  --color-ink-2: #525252; /* 설명문 */
+  --color-ink-muted: #a3a3a3; /* 라벨·보조 수치·placeholder */
+
+  /* 면 */
+  --color-surface: #ffffff; /* 카드·시트 */
+  --color-surface-2: #fafafa; /* 페이지 배경, 옅은 영역 */
+  --color-surface-3: #f5f5f5; /* 입력 트랙, hover */
+  --color-selected: #e5e5e5; /* 선택된 칩·이모지. hover 보다 한 단계 진해야 구분된다 */
+
+  /* 선 */
+  --color-line: #f0f0f0; /* 목록 구분선 */
+  --color-line-2: #e5e5e5; /* 카드·입력 테두리 */
+
+  /* 강조 — 앱에 강조색은 하나뿐이다. 검정. */
+  --color-accent: #171717;
+  --color-accent-hover: #404040;
+
+  /* 의미색 */
+  --color-income: #006300; /* 수입 금액 */
+  --color-danger: #dc2626; /* 초과·삭제 */
+  --color-danger-soft: #fef2f2; /* 에러 배경 */
+
+  /* 글자 크기 — 역할 4개 + hero */
+  --text-hero: 1.5rem; /* 24px 위젯·통계 대표 숫자 */
+  --text-body: 0.9375rem; /* 15px 목록 항목·금액·입력 */
+  --text-label: 0.875rem; /* 14px 라벨·버튼·설명문 */
+  --text-caption: 0.75rem; /* 12px 보조 수치·배지 */
+
+  /* 라운딩 — 역할 3개 */
+  --radius-control: 0.625rem; /* 10px 버튼·입력·칩 */
+  --radius-card: 1rem; /* 16px 카드·옅은 영역 */
+  --radius-sheet: 1.25rem; /* 20px 시트·데스크톱 컬럼 */
+}
+
 :root {
   color-scheme: light;
 }
 
 body {
   -webkit-tap-highlight-color: transparent;
+  color: var(--color-ink);
 }
 
 /*
@@ -14,6 +63,6 @@ body {
 */
 @media (min-width: 640px) {
   body {
-    background-color: #fafaf9;
+    background-color: var(--color-surface-2);
   }
 }

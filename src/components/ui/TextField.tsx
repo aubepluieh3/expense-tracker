@@ -5,20 +5,47 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'id'> & {
   hint?: string
 }
 
+/**
+ * 입력 스타일은 여기 한 곳에만 있다.
+ * 이전에는 TextField 와 PasswordField 가 같은 클래스 문자열을 복붙해서,
+ * 한쪽만 고치면 두 입력의 모양이 갈라졌다.
+ */
+const inputClass =
+  'w-full rounded-control border border-line-2 px-3.5 py-3 text-body text-ink outline-none transition placeholder:text-ink-muted focus:border-ink'
+
+function FieldShell({
+  id,
+  label,
+  hint,
+  action,
+  children,
+}: {
+  id: string
+  label: string
+  hint?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <label htmlFor={id} className="text-label text-ink-2">
+          {label}
+        </label>
+        {action}
+      </div>
+      {children}
+      {hint && <p className="mt-1.5 text-caption text-ink-muted">{hint}</p>}
+    </div>
+  )
+}
+
 export function TextField({ label, hint, className = '', ...rest }: Props) {
   const id = useId()
   return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm text-neutral-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        className={`w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-[15px] outline-none placeholder:text-neutral-400 focus:border-neutral-900 ${className}`}
-        {...rest}
-      />
-      {hint && <p className="mt-1.5 text-xs text-neutral-500">{hint}</p>}
-    </div>
+    <FieldShell id={id} label={label} hint={hint}>
+      <input id={id} className={`${inputClass} ${className}`} {...rest} />
+    </FieldShell>
   )
 }
 
@@ -32,26 +59,21 @@ export function PasswordField({ label, hint, ...rest }: Props) {
   const [shown, setShown] = useState(false)
 
   return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between">
-        <label htmlFor={id} className="text-sm text-neutral-700">
-          {label}
-        </label>
+    <FieldShell
+      id={id}
+      label={label}
+      hint={hint}
+      action={
         <button
           type="button"
           onClick={() => setShown((v) => !v)}
-          className="text-xs text-neutral-500 hover:text-neutral-900"
+          className="text-caption text-ink-muted transition hover:text-ink"
         >
           {shown ? '숨기기' : '표시'}
         </button>
-      </div>
-      <input
-        id={id}
-        type={shown ? 'text' : 'password'}
-        className="w-full rounded-xl border border-neutral-300 px-3.5 py-3 text-[15px] outline-none placeholder:text-neutral-400 focus:border-neutral-900"
-        {...rest}
-      />
-      {hint && <p className="mt-1.5 text-xs text-neutral-500">{hint}</p>}
-    </div>
+      }
+    >
+      <input id={id} type={shown ? 'text' : 'password'} className={inputClass} {...rest} />
+    </FieldShell>
   )
 }
