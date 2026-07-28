@@ -12,6 +12,15 @@
   --color-ink → text-ink / bg-ink / border-ink
 */
 @theme {
+  /*
+    본문 폰트. index.html 의 <link> 로 로드한다.
+    이 앱은 화면의 절반이 숫자라서 숫자 폭이 고른 폰트가 직접 이득이다 —
+    금액이 세로로 정렬되는 목록에서 자리가 흔들리지 않는다.
+    한글과 라틴 문자의 크기·굵기도 맞아서 "7월 3일 · −12,000" 에서 기준선이 안 흔들린다.
+    선언이 없던 동안에는 OS 마다 다른 폰트로 보였다 (Windows 맑은 고딕 / macOS Apple SD 산돌고딕).
+  */
+  --font-sans: 'Pretendard Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
   /* 잉크 — 글자와 아이콘 */
   --color-ink: #171717; /* 본문·금액·제목 */
   --color-ink-2: #525252; /* 설명문 */
@@ -53,6 +62,8 @@
 }
 
 body {
+  /* Tailwind preflight 의 기본 스택을 확실히 덮는다 */
+  font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
   color: var(--color-ink);
 }

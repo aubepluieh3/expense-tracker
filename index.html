@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>가계부</title>
+
+    <!--
+      Pretendard. dynamic subset 이라 unicode-range 로 92조각으로 쪼개져 있고,
+      화면에 실제로 나온 글자가 든 조각만 내려온다 (실측 ~40KB).
+      한글 폰트를 통째로 받으면 1MB 를 넘는다.
+      버전을 고정해 둔다 — @latest 로 두면 어느 날 조용히 렌더가 바뀐다.
+    -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
+    />
   </head>
   <body>
     <div id="root"></div>
