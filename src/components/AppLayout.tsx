@@ -21,9 +21,9 @@ const TABS = [
 export function AppLayout() {
   return (
     <div
-      className="mx-auto flex min-h-dvh max-w-[520px] flex-col bg-white sm:my-6 sm:min-h-[calc(100dvh-3rem)] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-neutral-200 sm:shadow-sm"
+      className="mx-auto flex min-h-dvh max-w-[520px] flex-col bg-surface sm:my-6 sm:min-h-[calc(100dvh-3rem)] sm:overflow-hidden sm:rounded-sheet sm:border sm:border-line-2 sm:shadow-sm"
     >
-      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[520px] border-t border-neutral-200 bg-white sm:static sm:mx-0 sm:max-w-none sm:border-t-0 sm:border-b">
+      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[520px] border-t border-line-2 bg-surface sm:static sm:mx-0 sm:max-w-none sm:border-t-0 sm:border-b">
         <ul className="grid grid-cols-3">
           {TABS.map((tab) => (
             <li key={tab.to}>
@@ -31,14 +31,14 @@ export function AppLayout() {
                 to={tab.to}
                 end={tab.to === '/'}
                 className={({ isActive }) =>
-                  `flex flex-col items-center gap-0.5 py-2.5 text-xs transition sm:flex-row sm:justify-center sm:gap-1.5 sm:py-3 sm:text-sm ${
+                  `flex flex-col items-center gap-0.5 py-2.5 text-caption transition sm:flex-row sm:justify-center sm:gap-1.5 sm:py-3 sm:text-label ${
                     isActive
-                      ? 'text-neutral-900 sm:font-medium'
-                      : 'text-neutral-400 sm:hover:text-neutral-700'
+                      ? 'text-ink sm:font-medium'
+                      : 'text-ink-muted sm:hover:text-ink-2'
                   }`
                 }
               >
-                <span aria-hidden className="text-base sm:text-sm">
+                <span aria-hidden className="text-base sm:text-label">
                   {tab.icon}
                 </span>
                 {tab.label}
@@ -59,7 +59,7 @@ export function AppLayout() {
 export function Page({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <section className="px-5 py-6">
-      <h1 className="text-lg font-semibold text-neutral-900">{title}</h1>
+      <h1 className="text-lg font-semibold text-ink">{title}</h1>
       <div className="mt-4">{children}</div>
     </section>
   )

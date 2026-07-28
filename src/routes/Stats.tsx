@@ -33,15 +33,15 @@ export default function Stats() {
       <MonthNavigator month={month} onChange={setMonth} />
 
       <div className="mt-5">
-        <p className="text-sm text-neutral-500">이번 달 지출</p>
+        <p className="text-label text-ink-muted">이번 달 지출</p>
         <div className="mt-0.5 flex items-baseline gap-2.5">
-          <span className="text-2xl font-semibold tabular-nums text-neutral-900">
+          <span className="text-hero font-semibold tabular-nums text-ink">
             {formatAmount(total)}
-            <span className="ml-0.5 text-base font-normal text-neutral-500">원</span>
+            <span className="ml-0.5 text-base font-normal text-ink-muted">원</span>
           </span>
           {/* 색을 쓰지 않는다. "지출을 빨갛게 칠하지 않는다"는 원칙과 일관되게. */}
           {delta !== null && (
-            <span className="text-xs text-neutral-500">
+            <span className="text-caption text-ink-muted">
               지난달 대비 {delta > 0 ? '+' : ''}
               {delta}% {delta > 0 ? '↑' : delta < 0 ? '↓' : ''}
             </span>
@@ -70,9 +70,9 @@ export default function Stats() {
       )}
 
       {lifetime.isSuccess && (
-        <div className="mt-8 flex items-baseline justify-between border-t border-neutral-100 pt-3">
-          <span className="text-sm text-neutral-500">앱 사용 이후 누적</span>
-          <span className="text-[15px] font-semibold tabular-nums text-neutral-900">
+        <div className="mt-8 flex items-baseline justify-between border-t border-line pt-3">
+          <span className="text-label text-ink-muted">앱 사용 이후 누적</span>
+          <span className="text-body font-semibold tabular-nums text-ink">
             {lifetime.data >= 0 ? '+' : '−'}
             {formatAmount(Math.abs(lifetime.data))}원
           </span>

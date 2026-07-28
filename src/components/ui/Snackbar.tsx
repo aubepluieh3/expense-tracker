@@ -31,7 +31,7 @@ export function Snackbar({
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-5">
       <div
         role="status"
-        className="pointer-events-auto flex w-full max-w-[480px] items-center justify-between gap-4 rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white shadow-lg"
+        className="pointer-events-auto flex w-full max-w-[480px] items-center justify-between gap-4 rounded-control bg-accent px-4 py-3 text-label text-white shadow-lg"
       >
         <span>{state.message}</span>
         {state.actionLabel && (

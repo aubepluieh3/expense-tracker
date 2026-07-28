@@ -57,9 +57,9 @@ export default function App() {
 function MissingEnv() {
   return (
     <AuthLayout title="환경변수가 없습니다">
-      <p className="text-sm text-neutral-600">
-        <code className="rounded bg-neutral-100 px-1.5 py-0.5">.env.example</code> 을 복사해{' '}
-        <code className="rounded bg-neutral-100 px-1.5 py-0.5">.env.local</code> 을 만들고 Supabase
+      <p className="text-label text-ink-2">
+        <code className="rounded bg-surface-3 px-1.5 py-0.5">.env.example</code> 을 복사해{' '}
+        <code className="rounded bg-surface-3 px-1.5 py-0.5">.env.local</code> 을 만들고 Supabase
         프로젝트의 URL 과 anon key 를 채운 뒤 dev 서버를 다시 시작하세요.
       </p>
     </AuthLayout>

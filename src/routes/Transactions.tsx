@@ -6,6 +6,7 @@ import { MonthSummary } from '@/components/MonthSummary'
 import { TransactionFormSheet } from '@/components/TransactionFormSheet'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { FunnelIcon, PlusIcon } from '@/components/ui/icons'
+import { rowEmojiClass, rowInteractiveClass } from '@/components/ui/List'
 import { useMonthParam } from '@/hooks/useMonthParam'
 import { useAllCategories } from '@/hooks/useCategories'
 import { useMonthTransactions, useTransaction, type TransactionListItem } from '@/hooks/useTransactions'
@@ -85,9 +86,9 @@ export default function Transactions() {
               onClick={() => setFilterOpen((v) => !v)}
               aria-label="필터"
               aria-expanded={filterOpen}
-              className={`grid size-9 place-items-center rounded-lg ${
-                filterActive ? 'text-neutral-900' : 'text-neutral-400'
-              } hover:bg-neutral-100`}
+              className={`grid size-9 place-items-center rounded-control ${
+                filterActive ? 'text-ink' : 'text-ink-muted'
+              } hover:bg-surface-3`}
             >
               <FunnelIcon className="size-4" />
             </button>
@@ -95,7 +96,7 @@ export default function Transactions() {
                 여기 툴바 버튼으로 대체한다. */}
             <button
               onClick={() => patchParams({ new: '1' })}
-              className="hidden items-center gap-1 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 sm:flex"
+              className="hidden items-center gap-1 rounded-control bg-accent px-2.5 py-1.5 text-label font-medium text-white hover:bg-accent-hover sm:flex"
             >
               <PlusIcon className="size-3.5" />
               추가
@@ -109,7 +110,7 @@ export default function Transactions() {
 
       {/* 사용자의 대부분은 "전체"로 본다. 필터 줄이 상시로 자리를 차지할 이유가 없다. */}
       {filterOpen && (
-        <div className="mt-3 space-y-2 rounded-xl bg-neutral-50 p-3">
+        <div className="mt-3 space-y-2 rounded-control bg-surface-2 p-3">
           <div className="flex gap-1">
             {[
               { v: null, label: '전체' },
@@ -119,10 +120,10 @@ export default function Transactions() {
               <button
                 key={o.label}
                 onClick={() => patchParams({ type: o.v })}
-                className={`flex-1 rounded-lg py-1.5 text-sm transition ${
+                className={`flex-1 rounded-control py-1.5 text-label transition ${
                   (typeFilter ?? null) === o.v
-                    ? 'bg-neutral-900 text-white'
-                    : 'bg-white text-neutral-600'
+                    ? 'bg-accent text-white'
+                    : 'bg-surface text-ink-2'
                 }`}
               >
                 {o.label}
@@ -132,7 +133,7 @@ export default function Transactions() {
           <select
             value={categoryFilter ?? ''}
             onChange={(e) => patchParams({ category: e.target.value || null })}
-            className="w-full rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-sm text-neutral-800 outline-none"
+            className="w-full rounded-control border border-line-2 bg-surface px-2.5 py-2 text-label text-ink outline-none"
           >
             <option value="">카테고리 전체</option>
             {filterOptions.map((c) => (
@@ -146,8 +147,8 @@ export default function Transactions() {
       )}
 
       {filterActive && (
-        <div className="mt-3 flex items-center gap-2 text-sm">
-          <span className="rounded-lg bg-neutral-900 px-2.5 py-1 text-white">
+        <div className="mt-3 flex items-center gap-2 text-label">
+          <span className="rounded-control bg-accent px-2.5 py-1 text-white">
             {categoryFilter ? `${byId.get(categoryFilter)?.emoji ?? ''} ${byId.get(categoryFilter)?.name ?? ''}` : ''}
             {categoryFilter && typeFilter ? ' · ' : ''}
             {typeFilter === 'income' ? '수입' : typeFilter === 'expense' ? '지출' : ''}
@@ -155,7 +156,7 @@ export default function Transactions() {
           </span>
           <button
             onClick={() => patchParams({ type: null, category: null })}
-            className="text-neutral-500 hover:text-neutral-900"
+            className="text-ink-muted hover:text-ink"
             aria-label="필터 해제"
           >
             ✕
@@ -175,7 +176,7 @@ export default function Transactions() {
             action={
               <button
                 onClick={() => patchParams({ new: '1' })}
-                className="rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white"
+                className="rounded-control bg-accent px-4 py-2.5 text-label font-medium text-white"
               >
                 기록 시작하기
               </button>
@@ -195,16 +196,16 @@ export default function Transactions() {
           const upcoming = date > todayIso
           return (
             <div key={date} className="mb-3">
-              <div className="flex items-baseline justify-between border-b border-neutral-100 pb-1.5">
-                <h2 className="flex items-center gap-1.5 text-sm text-neutral-500">
+              <div className="flex items-baseline justify-between border-b border-line pb-1.5">
+                <h2 className="flex items-center gap-1.5 text-label text-ink-muted">
                   {dayLabel(date)}
                   {upcoming && (
-                    <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500">
+                    <span className="rounded bg-surface-3 px-1.5 py-0.5 text-caption text-ink-muted">
                       예정
                     </span>
                   )}
                 </h2>
-                <span className="text-xs text-neutral-400">
+                <span className="text-caption text-ink-muted">
                   {net >= 0 ? '+' : '−'}
                   {formatAmount(Math.abs(net))}
                 </span>
@@ -214,23 +215,23 @@ export default function Transactions() {
                   <li key={t.id}>
                     <button
                       onClick={() => patchParams({ edit: t.id })}
-                      className="flex w-full items-center gap-3 py-2.5 text-left hover:bg-neutral-50"
+                      className={rowInteractiveClass}
                     >
-                      <span aria-hidden className="text-lg">
+                      <span aria-hidden className={rowEmojiClass}>
                         {byId.get(t.category_id)?.emoji ?? '📦'}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[15px] text-neutral-900">
+                        <span className="block truncate text-body text-ink">
                           {byId.get(t.category_id)?.name ?? '알 수 없음'}
                         </span>
                         {t.memo && (
-                          <span className="block truncate text-xs text-neutral-500">{t.memo}</span>
+                          <span className="block truncate text-caption text-ink-muted">{t.memo}</span>
                         )}
                       </span>
                       {/* 지출을 빨갛게 칠하지 않는다. 목록 대부분이 빨개져서 강조가 사라진다. */}
                       <span
-                        className={`shrink-0 text-[15px] tabular-nums ${
-                          t.type === 'income' ? 'text-[#006300]' : 'text-neutral-900'
+                        className={`shrink-0 text-body tabular-nums ${
+                          t.type === 'income' ? 'text-income' : 'text-ink'
                         }`}
                       >
                         {t.type === 'income' ? '+' : '−'}
@@ -256,7 +257,7 @@ export default function Transactions() {
           <button
             onClick={() => patchParams({ new: '1' })}
             aria-label="거래 추가"
-            className="pointer-events-auto grid size-14 place-items-center rounded-full bg-neutral-900 text-white shadow-lg hover:bg-neutral-800"
+            className="pointer-events-auto grid size-14 place-items-center rounded-full bg-accent text-white shadow-lg hover:bg-accent-hover"
           >
             <PlusIcon className="size-6" />
           </button>

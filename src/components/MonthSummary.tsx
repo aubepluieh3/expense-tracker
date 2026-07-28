@@ -21,8 +21,8 @@ export function MonthSummary({ month }: { month: Month }) {
 
   if (isPending) {
     return (
-      <div className="mt-3 border-t border-neutral-100 pt-3" aria-hidden>
-        <div className="h-4 w-full animate-pulse rounded bg-neutral-100" />
+      <div className="mt-3 border-t border-line pt-3" aria-hidden>
+        <div className="h-4 w-full animate-pulse rounded bg-surface-3" />
       </div>
     )
   }
@@ -32,14 +32,14 @@ export function MonthSummary({ month }: { month: Month }) {
   const positive = data.net >= 0
 
   return (
-    <div className="mt-3 flex items-baseline gap-2 border-t border-neutral-100 pt-3">
-      <span className="shrink-0 text-sm text-neutral-500">{monthNumber}월 남은 금액</span>
-      <span className="flex-1 truncate text-xs tabular-nums text-neutral-400">
+    <div className="mt-3 flex items-baseline gap-2 border-t border-line pt-3">
+      <span className="shrink-0 text-label text-ink-muted">{monthNumber}월 남은 금액</span>
+      <span className="flex-1 truncate text-caption tabular-nums text-ink-muted">
         수입 {abbrevAmount(data.income)} · 지출 {abbrevAmount(data.expense)}
       </span>
       <span
-        className={`shrink-0 text-[15px] font-semibold tabular-nums ${
-          positive ? 'text-neutral-900' : 'text-red-600'
+        className={`shrink-0 text-body font-semibold tabular-nums ${
+          positive ? 'text-ink' : 'text-danger'
         }`}
       >
         {positive ? '+' : '−'}

@@ -35,18 +35,18 @@ export function CategoryChips({
               // 링 하나만 쓰면 4열 그리드의 작은 칩에서 이모지에 묻혀 안 보인다.
               // 배경을 검게 칠하지 않는 이유: 이모지는 자체 색을 가진 그림이라
               // 어두운 배경 위에서 대비가 무너진다.
-              className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-2.5 transition ${
+              className={`flex flex-col items-center gap-0.5 rounded-control px-1 py-2.5 transition ${
                 selected
-                  ? 'bg-neutral-200 ring-2 ring-neutral-900'
-                  : 'hover:bg-neutral-100'
+                  ? 'bg-selected ring-2 ring-ink'
+                  : 'hover:bg-surface-3'
               }`}
             >
               <span aria-hidden className="text-xl">
                 {c.emoji}
               </span>
               <span
-                className={`w-full truncate text-center text-xs ${
-                  selected ? 'font-semibold text-neutral-900' : 'text-neutral-700'
+                className={`w-full truncate text-center text-caption ${
+                  selected ? 'font-semibold text-ink' : 'text-ink-2'
                 }`}
               >
                 {c.name}
@@ -59,7 +59,7 @@ export function CategoryChips({
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2.5 text-xs text-neutral-500 hover:bg-neutral-100"
+            className="flex flex-col items-center justify-center gap-0.5 rounded-control px-1 py-2.5 text-caption text-ink-muted hover:bg-surface-3"
           >
             <span aria-hidden className="text-xl">
               ⋯
@@ -70,7 +70,7 @@ export function CategoryChips({
       </div>
 
       {categories.length === 0 && (
-        <p className="py-4 text-center text-sm text-neutral-400">
+        <p className="py-4 text-center text-label text-ink-muted">
           카테고리가 없습니다. 설정에서 추가해 주세요.
         </p>
       )}

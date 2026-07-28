@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
-import { FormError } from '@/components/AuthLayout'
+import { Callout } from '@/components/ui/Callout'
 import { EmojiPicker } from '@/components/EmojiPicker'
 
 export function CategoryFormSheet({
@@ -56,7 +56,7 @@ export function CategoryFormSheet({
         />
         <EmojiPicker value={emoji} onChange={setEmoji} />
         {extra}
-        <FormError>{error}</FormError>
+        <Callout tone="error">{error}</Callout>
         <Button type="submit" loading={busy}>
           저장
         </Button>

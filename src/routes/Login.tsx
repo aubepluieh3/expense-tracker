@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { authRedirectTo, supabase } from '@/lib/supabase'
-import { AuthLayout, FormError, FormNotice } from '@/components/AuthLayout'
+import { AuthLayout } from '@/components/AuthLayout'
+import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
 import { isEmailNotConfirmed } from '@/auth/authErrors'
@@ -58,9 +59,9 @@ export default function Login() {
     <AuthLayout
       title="로그인"
       footer={
-        <span className="text-neutral-600">
+        <span className="text-ink-2">
           계정이 없으신가요?{' '}
-          <Link to="/signup" className="font-medium text-neutral-900 underline">
+          <Link to="/signup" className="font-medium text-ink underline">
             회원가입
           </Link>
         </span>
@@ -84,17 +85,17 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <FormError>{error}</FormError>
-        <FormNotice>{notice}</FormNotice>
+        <Callout tone="error">{error}</Callout>
+        <Callout>{notice}</Callout>
 
         {unconfirmed && (
-          <div className="space-y-2 rounded-lg bg-amber-50 px-3 py-3">
-            <p className="text-sm text-amber-900">이메일 인증이 필요합니다.</p>
+          <div className="space-y-2 rounded-control bg-surface-3 px-3 py-3">
+            <p className="text-label text-ink-2">이메일 인증이 필요합니다.</p>
             <button
               type="button"
               onClick={resendConfirmation}
               disabled={busy}
-              className="text-sm font-medium text-amber-900 underline disabled:opacity-50"
+              className="text-label font-medium text-ink-2 underline disabled:opacity-50"
             >
               인증 메일 다시 받기
             </button>
@@ -107,7 +108,7 @@ export default function Login() {
       </form>
 
       <p className="mt-4 text-center">
-        <Link to="/forgot-password" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link to="/forgot-password" className="text-label text-ink-muted hover:text-ink">
           비밀번호를 잊으셨나요?
         </Link>
       </p>

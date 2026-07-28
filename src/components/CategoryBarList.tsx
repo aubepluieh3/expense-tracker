@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatAmount } from '@/lib/format'
+import { rowEmojiClass } from '@/components/ui/List'
 
 /**
  * 카테고리별 지출 — 100% 스택 바 + 가로 막대 목록.
@@ -114,7 +115,7 @@ export function StackBar({ slices }: { slices: Slice[] }) {
 
   return (
     <div
-      className="mt-3 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-neutral-100 transition-opacity duration-500"
+      className="mt-3 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-surface-3 transition-opacity duration-500"
       style={{ opacity: grown ? 1 : 0 }}
       aria-hidden
     >
@@ -150,39 +151,39 @@ export function CategoryBarList({
           <li key={s.id ?? 'other'}>
             <button
               onClick={() => (isOther ? setExpanded((v) => !v) : onSelect(s.id!))}
-              className="group w-full rounded-lg px-1 py-2 text-left transition hover:bg-neutral-50"
+              className="group w-full rounded-control px-1 py-2 text-left transition hover:bg-surface-2"
             >
               <div className="flex items-baseline gap-2">
-                <span aria-hidden className="text-base">
+                <span aria-hidden className={rowEmojiClass}>
                   {s.emoji}
                 </span>
                 {/* 기타는 항목이 아니라 묶음이다. 같은 무게로 그리면 동급으로 읽힌다. */}
                 <span
-                  className={`flex-1 truncate text-[15px] ${
-                    isOther ? 'text-neutral-500' : 'text-neutral-900'
+                  className={`flex-1 truncate text-body ${
+                    isOther ? 'text-ink-muted' : 'text-ink'
                   }`}
                 >
                   {s.name}
                   {isOther && (
-                    <span className="ml-1 text-xs text-neutral-400">
+                    <span className="ml-1 text-caption text-ink-muted">
                       {rest.length}개 {expanded ? '▴' : '▾'}
                     </span>
                   )}
                 </span>
                 <span
-                  className={`text-[15px] tabular-nums ${
-                    isOther ? 'text-neutral-500' : 'text-neutral-900'
+                  className={`text-body tabular-nums ${
+                    isOther ? 'text-ink-muted' : 'text-ink'
                   }`}
                 >
                   {formatAmount(s.total)}
                 </span>
                 {/* 묶음의 비중은 정보가 약해서 % 를 비운다. */}
-                <span className="w-9 text-right text-xs tabular-nums text-neutral-400">
+                <span className="w-9 text-right text-caption tabular-nums text-ink-muted">
                   {isOther ? '' : `${percent}%`}
                 </span>
               </div>
 
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
                 <div
                   className="h-full rounded-full transition-[width] duration-700 ease-out"
                   style={{
@@ -195,18 +196,18 @@ export function CategoryBarList({
             </button>
 
             {isOther && expanded && (
-              <ul className="mb-1 ml-6 border-l border-neutral-100 pl-3">
+              <ul className="mb-1 ml-6 border-l border-line pl-3">
                 {rest.map((r) => (
                   <li key={r.id}>
                     <button
                       onClick={() => onSelect(r.id!)}
-                      className="flex w-full items-baseline gap-2 rounded-lg px-1 py-1.5 text-left transition hover:bg-neutral-50"
+                      className="flex w-full items-baseline gap-2 rounded-control px-1 py-1.5 text-left transition hover:bg-surface-2"
                     >
-                      <span aria-hidden className="text-sm">
+                      <span aria-hidden className="text-label">
                         {r.emoji}
                       </span>
-                      <span className="flex-1 truncate text-sm text-neutral-700">{r.name}</span>
-                      <span className="text-sm tabular-nums text-neutral-600">
+                      <span className="flex-1 truncate text-label text-ink-2">{r.name}</span>
+                      <span className="text-label tabular-nums text-ink-2">
                         {formatAmount(r.total)}
                       </span>
                     </button>

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/auth/AuthProvider'
-import { AuthLayout, FormError } from '@/components/AuthLayout'
+import { AuthLayout } from '@/components/AuthLayout'
+import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField } from '@/components/ui/TextField'
 import { FullScreenSpinner } from '@/components/ui/FullScreenSpinner'
@@ -30,7 +31,7 @@ export default function ResetPassword() {
         title="링크가 유효하지 않습니다"
         description="재설정 링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요."
         footer={
-          <Link to="/forgot-password" className="font-medium text-neutral-900 underline">
+          <Link to="/forgot-password" className="font-medium text-ink underline">
             재설정 메일 다시 받기
           </Link>
         }
@@ -72,7 +73,7 @@ export default function ResetPassword() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <FormError>{error}</FormError>
+        <Callout tone="error">{error}</Callout>
         <Button type="submit" loading={busy}>
           변경하기
         </Button>

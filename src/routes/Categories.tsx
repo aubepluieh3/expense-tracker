@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { Page } from '@/components/AppLayout'
 import { Sheet } from '@/components/ui/Sheet'
-import { Button } from '@/components/ui/Button'
+import { Button, SubtleButton } from '@/components/ui/Button'
+import { List, rowClass, rowEmojiClass } from '@/components/ui/List'
+import { ErrorState, ListSkeleton } from '@/components/states'
 import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { CategoryFormSheet } from '@/components/CategoryFormSheet'
 import type { Category, CategoryType } from '@/types/database'
@@ -83,18 +85,18 @@ export default function Categories() {
   return (
     <Page title="카테고리 관리">
       <p className="-mt-2 mb-4">
-        <Link to="/settings" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <Link to="/settings" className="text-label text-ink-muted hover:text-ink">
           ← 설정
         </Link>
       </p>
 
-      <div className="mb-4 flex gap-1 rounded-xl bg-neutral-100 p-1">
+      <div className="mb-4 flex gap-1 rounded-control bg-surface-3 p-1">
         {(['expense', 'income'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-lg py-2 text-sm transition ${
-              tab === t ? 'bg-white font-medium text-neutral-900 shadow-sm' : 'text-neutral-500'
+            className={`flex-1 rounded-control py-2 text-label transition ${
+              tab === t ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-muted'
             }`}
           >
             {t === 'expense' ? '지출' : '수입'}
@@ -102,39 +104,34 @@ export default function Categories() {
         ))}
       </div>
 
-      {categories.isPending && <p className="text-sm text-neutral-400">불러오는 중…</p>}
-      {categories.isError && <p className="text-sm text-red-600">불러오지 못했습니다</p>}
+      {categories.isPending && <ListSkeleton rows={5} />}
+      {categories.isError && <ErrorState onRetry={() => void categories.refetch()} />}
 
-      <ul className="divide-y divide-neutral-100">
+      <List>
         {list.map((c) => (
-          <li key={c.id} className="flex items-center gap-3 py-3">
-            <span aria-hidden className="text-lg">
+          <li key={c.id} className={rowClass}>
+            <span aria-hidden className={rowEmojiClass}>
               {c.emoji}
             </span>
-            <span className="flex-1 text-[15px] text-neutral-900">{c.name}</span>
+            <span className="min-w-0 flex-1 truncate text-body text-ink">{c.name}</span>
             {c.id === salaryId && (
-              <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600">
+              <span className="rounded-control bg-surface-3 px-1.5 py-0.5 text-caption text-ink-2">
                 월급 기준
               </span>
             )}
-            <button
-              onClick={() => setSheet({ mode: 'edit', category: c })}
-              className="text-sm text-neutral-500 hover:text-neutral-900"
-            >
+            {/* 이전에는 회색 글자라 누를 수 있는 것인지 알 수 없었다. */}
+            <SubtleButton onClick={() => setSheet({ mode: 'edit', category: c })}>
               수정
-            </button>
-            <button
-              onClick={() => void openDelete(c)}
-              className="text-sm text-neutral-500 hover:text-red-600"
-            >
+            </SubtleButton>
+            <SubtleButton tone="danger" onClick={() => void openDelete(c)}>
               삭제
-            </button>
+            </SubtleButton>
           </li>
         ))}
-      </ul>
+      </List>
 
       {!categories.isPending && list.length === 0 && (
-        <p className="py-8 text-center text-sm text-neutral-400">카테고리가 없습니다</p>
+        <p className="py-8 text-center text-label text-ink-muted">카테고리가 없습니다</p>
       )}
 
       <div className="mt-4">
@@ -163,7 +160,7 @@ export default function Categories() {
             // 급여 지정은 수입 카테고리에만 노출한다.
             // 지출 카테고리를 기준으로 삼으면 "월급 남은 돈" 계산이 무의미해진다.
             sheet.category.type === 'income' ? (
-              <label className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-3.5 py-3">
+              <label className="flex items-center gap-2.5 rounded-control bg-surface-2 px-3.5 py-3">
                 <input
                   type="checkbox"
                   className="size-4"
@@ -172,7 +169,7 @@ export default function Categories() {
                     void setSalary.mutateAsync(e.target.checked ? sheet.category.id : null)
                   }
                 />
-                <span className="text-sm text-neutral-800">월급 위젯 기준으로 사용</span>
+                <span className="text-label text-ink">월급 위젯 기준으로 사용</span>
               </label>
             ) : undefined
           }
@@ -191,12 +188,12 @@ export default function Categories() {
 
       {confirm && (
         <Sheet title="카테고리 삭제" onClose={() => setConfirm(null)}>
-          <p className="text-sm text-neutral-700">
-            <strong className="text-neutral-900">'{confirm.category.name}'</strong>을(를)
+          <p className="text-label text-ink-2">
+            <strong className="text-ink">'{confirm.category.name}'</strong>을(를)
             삭제합니다.
           </p>
           {confirm.txCount > 0 && (
-            <p className="mt-2 text-sm text-neutral-600">
+            <p className="mt-2 text-label text-ink-2">
               기록된 거래 {confirm.txCount}건과 과거 통계는 그대로 유지됩니다.
             </p>
           )}
@@ -213,14 +210,14 @@ export default function Categories() {
 
       {restore && (
         <Sheet title="이미 있는 이름입니다" onClose={() => setRestore(null)}>
-          <p className="text-sm text-neutral-700">
+          <p className="text-label text-ink-2">
             예전에 삭제한{' '}
-            <strong className="text-neutral-900">
+            <strong className="text-ink">
               {restore.category.emoji} {restore.category.name}
             </strong>{' '}
             이(가) 있습니다.
           </p>
-          <p className="mt-2 text-sm text-neutral-600">
+          <p className="mt-2 text-label text-ink-2">
             {restore.txCount > 0
               ? `되살리면 과거 거래 ${restore.txCount}건이 다시 연결됩니다.`
               : '연결된 거래는 없습니다.'}
@@ -237,7 +234,7 @@ export default function Categories() {
             </Button>
             {/* "새로 만들기"는 제공하지 않는다. 같은 이름의 카테고리가 둘 생기면
                 사용자가 화면에서 구별할 방법이 없어진다(기획서 §9). */}
-            <p className="pt-1 text-center text-xs text-neutral-500">
+            <p className="pt-1 text-center text-caption text-ink-muted">
               또는 닫고 다른 이름을 입력하세요
             </p>
           </div>

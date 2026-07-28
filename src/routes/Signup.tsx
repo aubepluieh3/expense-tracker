@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authRedirectTo, supabase } from '@/lib/supabase'
-import { AuthLayout, FormError, FormNotice } from '@/components/AuthLayout'
+import { AuthLayout } from '@/components/AuthLayout'
+import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
 
@@ -69,7 +70,7 @@ export default function Signup() {
         description={`${email} 로 인증 링크를 보냈습니다. 링크를 누르면 로그인됩니다.`}
       >
         <div className="space-y-4">
-          <FormNotice>{notice}</FormNotice>
+          <Callout>{notice}</Callout>
 
           <Button variant="ghost" onClick={resend} loading={busy}>
             메일이 오지 않았나요? 다시 보내기
@@ -80,11 +81,11 @@ export default function Signup() {
             구분해서 알려주면 계정 열거가 열리므로, 대신 두 경우를 모두 커버하는
             안내로 막다른 골목을 없앤다.
           */}
-          <div className="rounded-lg bg-neutral-100 px-3.5 py-3 text-sm text-neutral-700">
+          <div className="rounded-control bg-surface-3 px-3.5 py-3 text-label text-ink-2">
             <p>이미 가입한 이메일이라면 새 링크가 오지 않습니다.</p>
             <Link
               to="/login"
-              className="mt-1.5 inline-block font-medium text-neutral-900 underline"
+              className="mt-1.5 inline-block font-medium text-ink underline"
             >
               로그인하러 가기 →
             </Link>
@@ -98,9 +99,9 @@ export default function Signup() {
     <AuthLayout
       title="회원가입"
       footer={
-        <span className="text-neutral-600">
+        <span className="text-ink-2">
           이미 계정이 있으신가요?{' '}
-          <Link to="/login" className="font-medium text-neutral-900 underline">
+          <Link to="/login" className="font-medium text-ink underline">
             로그인
           </Link>
         </span>
@@ -133,7 +134,7 @@ export default function Signup() {
           onChange={(e) => setNickname(e.target.value)}
         />
 
-        <FormError>{error}</FormError>
+        <Callout tone="error">{error}</Callout>
 
         <Button type="submit" loading={busy}>
           가입하기

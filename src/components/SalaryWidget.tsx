@@ -18,9 +18,9 @@ export function SalaryWidget() {
   if (isPending) {
     return (
       <div className="mt-3 space-y-2" aria-hidden>
-        <div className="h-3 w-24 animate-pulse rounded bg-neutral-100" />
-        <div className="h-7 w-40 animate-pulse rounded bg-neutral-100" />
-        <div className="h-1.5 w-full animate-pulse rounded-full bg-neutral-100" />
+        <div className="h-3 w-24 animate-pulse rounded bg-surface-3" />
+        <div className="h-7 w-40 animate-pulse rounded bg-surface-3" />
+        <div className="h-1.5 w-full animate-pulse rounded-full bg-surface-3" />
       </div>
     )
   }
@@ -30,11 +30,11 @@ export function SalaryWidget() {
   // 급여 카테고리 미지정 / 삭제됨 / 급여 거래 없음
   if (!data) {
     return (
-      <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3">
-        <p className="text-sm text-neutral-600">급여를 등록하면 남은 금액을 보여드려요</p>
+      <div className="mt-3 rounded-control bg-surface-2 px-4 py-3">
+        <p className="text-label text-ink-2">급여를 등록하면 남은 금액을 보여드려요</p>
         <Link
           to="/settings/categories"
-          className="mt-0.5 inline-block text-xs text-neutral-500 underline"
+          className="mt-0.5 inline-block text-caption text-ink-muted underline"
         >
           급여 카테고리 확인하기
         </Link>
@@ -52,32 +52,32 @@ export function SalaryWidget() {
   return (
     <div className="mt-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm text-neutral-500">💼 월급 남은 돈</span>
-        <span className="shrink-0 text-xs tabular-nums text-neutral-400">
+        <span className="text-label text-ink-muted">💼 월급 남은 돈</span>
+        <span className="shrink-0 text-caption tabular-nums text-ink-muted">
           {overspent ? '월급 초과' : `${formatAmount(data.salary_amount)}원 중 ${percent}%`}
         </span>
       </div>
 
       <p
-        className={`mt-0.5 text-2xl font-semibold tabular-nums ${
-          overspent ? 'text-red-600' : 'text-neutral-900'
+        className={`mt-0.5 text-hero font-semibold tabular-nums ${
+          overspent ? 'text-danger' : 'text-ink'
         }`}
       >
         {overspent && '−'}
         {formatAmount(Math.abs(data.remaining))}
-        <span className="ml-0.5 text-base font-normal text-neutral-500">원</span>
+        <span className="ml-0.5 text-base font-normal text-ink-muted">원</span>
       </p>
 
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-selected">
         <div
           className={`h-full rounded-full transition-[width] duration-700 ease-out ${
-            overspent ? 'bg-red-500' : 'bg-neutral-900'
+            overspent ? 'bg-danger' : 'bg-accent'
           }`}
           style={{ width: `${overspent ? 100 : percent}%` }}
         />
       </div>
 
-      <p className="mt-1.5 truncate text-xs text-neutral-400">
+      <p className="mt-1.5 truncate text-caption text-ink-muted">
         {shortDate(data.salary_date)} 지급
         {/* 급여 등록을 깜빡한 경우를 사용자가 알아챌 수 있게 경과일을 보여준다. */}
         {sinceSalary > 40 && ` (${sinceSalary}일 전)`}

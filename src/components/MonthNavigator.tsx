@@ -28,13 +28,13 @@ export function MonthNavigator({
         <button
           aria-label="이전 달"
           onClick={() => onChange(shiftMonth(month, -1))}
-          className="size-9 justify-self-start rounded-lg text-neutral-500 hover:bg-neutral-100"
+          className="size-9 justify-self-start rounded-control text-ink-muted hover:bg-surface-3"
         >
           ‹
         </button>
         <button
           onClick={() => setPicking(true)}
-          className="rounded-lg px-3 py-1.5 text-[15px] font-semibold text-neutral-900 hover:bg-neutral-100"
+          className="rounded-control px-3 py-1.5 text-body font-semibold text-ink hover:bg-surface-3"
         >
           {monthLabel(month)}
         </button>
@@ -42,7 +42,7 @@ export function MonthNavigator({
           <button
             aria-label="다음 달"
             onClick={() => onChange(shiftMonth(month, 1))}
-            className="size-9 rounded-lg text-neutral-500 hover:bg-neutral-100"
+            className="size-9 rounded-control text-ink-muted hover:bg-surface-3"
           >
             ›
           </button>
@@ -82,15 +82,15 @@ function MonthPicker({
         <button
           aria-label="이전 해"
           onClick={() => setYear((y) => y - 1)}
-          className="size-8 rounded-lg text-neutral-500 hover:bg-neutral-100"
+          className="size-8 rounded-control text-ink-muted hover:bg-surface-3"
         >
           ‹
         </button>
-        <span className="text-base font-semibold text-neutral-900">{year}년</span>
+        <span className="text-base font-semibold text-ink">{year}년</span>
         <button
           aria-label="다음 해"
           onClick={() => setYear((y) => y + 1)}
-          className="size-8 rounded-lg text-neutral-500 hover:bg-neutral-100"
+          className="size-8 rounded-control text-ink-muted hover:bg-surface-3"
         >
           ›
         </button>
@@ -104,12 +104,12 @@ function MonthPicker({
             <button
               key={value}
               onClick={() => onPick(value)}
-              className={`rounded-xl py-2.5 text-sm transition ${
+              className={`rounded-control py-2.5 text-label transition ${
                 selected
-                  ? 'bg-neutral-900 text-white'
+                  ? 'bg-accent text-white'
                   : value === thisMonth
-                    ? 'bg-neutral-100 font-medium text-neutral-900'
-                    : 'text-neutral-700 hover:bg-neutral-100'
+                    ? 'bg-surface-3 font-medium text-ink'
+                    : 'text-ink-2 hover:bg-surface-3'
               }`}
             >
               {i + 1}월

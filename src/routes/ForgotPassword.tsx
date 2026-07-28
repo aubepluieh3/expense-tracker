@@ -27,7 +27,7 @@ export default function ForgotPassword() {
         title="메일을 확인해 주세요"
         description={`해당 계정이 있다면 ${email} 로 재설정 링크를 보냈습니다.`}
         footer={
-          <Link to="/login" className="font-medium text-neutral-900 underline">
+          <Link to="/login" className="font-medium text-ink underline">
             로그인 화면으로
           </Link>
         }
@@ -42,7 +42,7 @@ export default function ForgotPassword() {
       title="비밀번호 재설정"
       description="가입할 때 쓴 이메일로 재설정 링크를 보내드립니다."
       footer={
-        <Link to="/login" className="text-neutral-600 underline">
+        <Link to="/login" className="text-ink-2 underline">
           로그인 화면으로
         </Link>
       }

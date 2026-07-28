@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
+import { Button } from '@/components/ui/Button'
 import { CategoryChips } from '@/components/CategoryChips'
-import { FormError } from '@/components/AuthLayout'
+import { Callout } from '@/components/ui/Callout'
 import { useAllCategories, useCategories } from '@/hooks/useCategories'
 import {
   useCreateTransaction,
@@ -54,13 +55,17 @@ export function TransactionFormSheet({
     return orphan && orphan.type === type ? [...list, orphan] : list
   }, [active.data, all.data, type, categoryId])
 
-  const dirty =
-    !isEdit ||
-    type !== initial.type ||
-    categoryId !== initial.category_id ||
-    amount !== String(initial.amount) ||
-    occurredOn !== initial.occurred_on ||
-    memo !== (initial.memo ?? '')
+  /**
+   * 새 거래는 "사용자가 뭔가 입력했는가"로 판단한다.
+   * !isEdit 을 그대로 dirty 로 쓰면 시트를 열고 바로 닫아도 확인창이 떴다.
+   */
+  const dirty = isEdit
+    ? type !== initial.type ||
+      categoryId !== initial.category_id ||
+      amount !== String(initial.amount) ||
+      occurredOn !== initial.occurred_on ||
+      memo !== (initial.memo ?? '')
+    : categoryId !== null || amount !== '' || memo !== '' || occurredOn !== today()
 
   function requestClose() {
     if (dirty && !window.confirm('작성 중인 내용을 취소할까요?')) return
@@ -103,7 +108,7 @@ export function TransactionFormSheet({
           type="submit"
           form="transaction-form"
           disabled={busy}
-          className="text-sm font-semibold text-neutral-900 disabled:opacity-40"
+          className="text-label font-semibold text-ink disabled:opacity-40"
         >
           {busy ? '저장 중…' : '저장'}
         </button>
@@ -111,7 +116,7 @@ export function TransactionFormSheet({
     >
       <form id="transaction-form" onSubmit={submit} className="space-y-4">
         {/* 거래의 대부분은 지출이라 지출이 기본 선택이다. */}
-        <div className="flex gap-1 rounded-xl bg-neutral-100 p-1">
+        <div className="flex gap-1 rounded-control bg-surface-3 p-1">
           {(['expense', 'income'] as const).map((t) => (
             <button
               key={t}
@@ -121,8 +126,8 @@ export function TransactionFormSheet({
                 setType(t)
                 setCategoryId(null) // 타입이 바뀌면 카테고리 선택은 무효다
               }}
-              className={`flex-1 rounded-lg py-2 text-sm transition ${
-                type === t ? 'bg-white font-medium text-neutral-900 shadow-sm' : 'text-neutral-500'
+              className={`flex-1 rounded-control py-2 text-label transition ${
+                type === t ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-muted'
               }`}
             >
               {t === 'expense' ? '지출' : '수입'}
@@ -132,23 +137,23 @@ export function TransactionFormSheet({
 
         <CategoryChips categories={chips} value={categoryId} onChange={setCategoryId} />
 
-        <div className="space-y-3 border-t border-neutral-100 pt-4">
+        <div className="space-y-3 border-t border-line pt-4">
           <label className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-sm text-neutral-500">금액</span>
+            <span className="w-10 shrink-0 text-label text-ink-muted">금액</span>
             <span className="flex flex-1 items-baseline justify-end gap-1">
               <input
                 inputMode="numeric"
                 placeholder="0"
                 value={amount ? formatAmount(Number(amount)) : ''}
                 onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, 10))}
-                className="w-full bg-transparent text-right text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300"
+                className="w-full bg-transparent text-right text-xl font-semibold text-ink outline-none placeholder:text-ink-muted"
               />
-              <span className="text-sm text-neutral-500">원</span>
+              <span className="text-label text-ink-muted">원</span>
             </span>
           </label>
 
           <div className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-sm text-neutral-500">날짜</span>
+            <span className="w-10 shrink-0 text-label text-ink-muted">날짜</span>
             <div className="flex flex-1 items-center justify-end gap-1.5">
               {/* 실제 입력의 대부분이 어제/오늘이다. 달력은 예외 경로. */}
               <QuickDate label="어제" value={addDays(today(), -1)} current={occurredOn} onPick={setOccurredOn} />
@@ -157,54 +162,52 @@ export function TransactionFormSheet({
                 type="date"
                 value={occurredOn}
                 onChange={(e) => e.target.value && setOccurredOn(e.target.value)}
-                className="rounded-lg border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900 outline-none focus:border-neutral-900"
+                className="rounded-control border border-line-2 px-2 py-1.5 text-label text-ink outline-none focus:border-ink"
               />
             </div>
           </div>
 
           <label className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-sm text-neutral-500">메모</span>
+            <span className="w-10 shrink-0 text-label text-ink-muted">메모</span>
             <input
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               maxLength={100}
               placeholder="선택"
-              className="flex-1 bg-transparent text-right text-[15px] text-neutral-900 outline-none placeholder:text-neutral-300"
+              className="flex-1 bg-transparent text-right text-body text-ink outline-none placeholder:text-ink-muted"
             />
           </label>
         </div>
 
-        <FormError>{error}</FormError>
+        <Callout tone="error">{error}</Callout>
       </form>
 
       {isEdit && (
-        <div className="mt-5 border-t border-neutral-100 pt-4">
+        <div className="mt-5 border-t border-line pt-4">
           {confirmingDelete ? (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm text-neutral-700">이 거래를 삭제할까요?</span>
+              <span className="text-label text-ink-2">이 거래를 삭제할까요?</span>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="rounded-lg px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100"
-                >
+                <Button variant="ghost" size="inline" onClick={() => setConfirmingDelete(false)}>
                   취소
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
+                  size="inline"
+                  loading={remove.isPending}
                   onClick={async () => {
                     await remove.mutateAsync(initial.id)
                     onClose()
                   }}
-                  disabled={remove.isPending}
-                  className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                 >
                   삭제
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
             <button
               onClick={() => setConfirmingDelete(true)}
-              className="text-sm text-red-600 hover:underline"
+              className="text-label text-danger hover:underline"
             >
               거래 삭제
             </button>
@@ -231,8 +234,8 @@ function QuickDate({
     <button
       type="button"
       onClick={() => onPick(value)}
-      className={`rounded-lg px-2.5 py-1.5 text-sm transition ${
-        active ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+      className={`rounded-control px-2.5 py-1.5 text-label transition ${
+        active ? 'bg-accent text-white' : 'bg-surface-3 text-ink-2 hover:bg-selected'
       }`}
     >
       {label}
