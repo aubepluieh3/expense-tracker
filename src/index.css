@@ -7,3 +7,13 @@
 body {
   -webkit-tap-highlight-color: transparent;
 }
+
+/*
+  데스크톱에서는 520px 컬럼 뒤에 한 단계 낮은 배경을 깐다.
+  흰 배경에 흰 컬럼이면 어디까지가 앱 영역인지 알 수 없다.
+*/
+@media (min-width: 640px) {
+  body {
+    background-color: #fafaf9;
+  }
+}

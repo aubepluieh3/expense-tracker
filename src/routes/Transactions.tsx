@@ -5,6 +5,7 @@ import { SalaryWidget } from '@/components/SalaryWidget'
 import { MonthSummary } from '@/components/MonthSummary'
 import { TransactionFormSheet } from '@/components/TransactionFormSheet'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
+import { FunnelIcon, PlusIcon } from '@/components/ui/icons'
 import { useMonthParam } from '@/hooks/useMonthParam'
 import { useAllCategories } from '@/hooks/useCategories'
 import { useMonthTransactions, useTransaction, type TransactionListItem } from '@/hooks/useTransactions'
@@ -79,16 +80,27 @@ export default function Transactions() {
         month={month}
         onChange={setMonth}
         right={
-          <button
-            onClick={() => setFilterOpen((v) => !v)}
-            aria-label="필터"
-            aria-expanded={filterOpen}
-            className={`size-9 rounded-lg text-base ${
-              filterActive ? 'text-neutral-900' : 'text-neutral-400'
-            } hover:bg-neutral-100`}
-          >
-            ⚲
-          </button>
+          <>
+            <button
+              onClick={() => setFilterOpen((v) => !v)}
+              aria-label="필터"
+              aria-expanded={filterOpen}
+              className={`grid size-9 place-items-center rounded-lg ${
+                filterActive ? 'text-neutral-900' : 'text-neutral-400'
+              } hover:bg-neutral-100`}
+            >
+              <FunnelIcon className="size-4" />
+            </button>
+            {/* 데스크톱에서는 FAB 이 뷰포트 하단에 고정돼 목록을 덮으므로
+                여기 툴바 버튼으로 대체한다. */}
+            <button
+              onClick={() => patchParams({ new: '1' })}
+              className="hidden items-center gap-1 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 sm:flex"
+            >
+              <PlusIcon className="size-3.5" />
+              추가
+            </button>
+          </>
         }
       />
 
@@ -182,7 +194,7 @@ export default function Transactions() {
           // 사용자가 오늘 날짜를 기억해야 "아직 안 나간 돈"임을 알 수 있다.
           const upcoming = date > todayIso
           return (
-            <div key={date} className="mb-5">
+            <div key={date} className="mb-3">
               <div className="flex items-baseline justify-between border-b border-neutral-100 pb-1.5">
                 <h2 className="flex items-center gap-1.5 text-sm text-neutral-500">
                   {dayLabel(date)}
@@ -233,15 +245,20 @@ export default function Transactions() {
         })}
       </div>
 
-      {/* 하단 탭 위 16px. 목록 끝 여백이 없으면 마지막 거래가 가려진다. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[520px]">
+      {/*
+        FAB 은 모바일 전용이다. 뷰포트 하단 고정이라 화면이 세로로 길어지면
+        스크롤 위치와 무관하게 목록 중간을 덮는다 — 데스크톱에서 실제로 금액과
+        날짜 소계가 가려졌다. 큰 화면에서는 위 툴바의 "추가" 버튼을 쓴다.
+        하단 탭 위 16px. 목록 끝 여백이 없으면 마지막 거래가 가려진다.
+      */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[520px] sm:hidden">
         <div className="flex justify-end px-5 pb-[calc(3.5rem+1rem)]">
           <button
             onClick={() => patchParams({ new: '1' })}
             aria-label="거래 추가"
-            className="pointer-events-auto size-14 rounded-full bg-neutral-900 text-2xl text-white shadow-lg hover:bg-neutral-800"
+            className="pointer-events-auto grid size-14 place-items-center rounded-full bg-neutral-900 text-white shadow-lg hover:bg-neutral-800"
           >
-            ＋
+            <PlusIcon className="size-6" />
           </button>
         </div>
       </div>

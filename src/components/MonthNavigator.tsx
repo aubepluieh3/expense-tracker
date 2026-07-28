@@ -19,28 +19,35 @@ export function MonthNavigator({
 
   return (
     <>
-      <div className="flex items-center gap-1">
+      {/*
+        1fr auto 1fr 그리드로 월 라벨을 가운데 열에 둔다.
+        flex 로 하면 오른쪽 버튼이 있는 화면(내역)에서만 라벨이 왼쪽으로 밀려서,
+        탭을 옮길 때 라벨이 튄다.
+      */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center">
         <button
           aria-label="이전 달"
           onClick={() => onChange(shiftMonth(month, -1))}
-          className="size-9 rounded-lg text-neutral-500 hover:bg-neutral-100"
+          className="size-9 justify-self-start rounded-lg text-neutral-500 hover:bg-neutral-100"
         >
           ‹
         </button>
         <button
           onClick={() => setPicking(true)}
-          className="flex-1 rounded-lg py-1.5 text-[15px] font-semibold text-neutral-900 hover:bg-neutral-100"
+          className="rounded-lg px-3 py-1.5 text-[15px] font-semibold text-neutral-900 hover:bg-neutral-100"
         >
           {monthLabel(month)}
         </button>
-        <button
-          aria-label="다음 달"
-          onClick={() => onChange(shiftMonth(month, 1))}
-          className="size-9 rounded-lg text-neutral-500 hover:bg-neutral-100"
-        >
-          ›
-        </button>
-        {right}
+        <div className="flex items-center gap-1 justify-self-end">
+          <button
+            aria-label="다음 달"
+            onClick={() => onChange(shiftMonth(month, 1))}
+            className="size-9 rounded-lg text-neutral-500 hover:bg-neutral-100"
+          >
+            ›
+          </button>
+          {right}
+        </div>
       </div>
 
       {picking && (

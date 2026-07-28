@@ -2,8 +2,14 @@ import { NavLink, Outlet } from 'react-router-dom'
 
 /**
  * 로그인 후 공통 셸.
- * 모바일은 하단 탭, 데스크톱은 max-width 520px 중앙 정렬 (기획서 §2 반응형 전략).
- * 4단계에서 내역 화면과 함께 다듬는다.
+ *
+ * 탭 위치가 화면 크기에 따라 다르다 (기획서 §2):
+ *   모바일  하단 고정 — 엄지가 닿는 자리
+ *   데스크톱 컬럼 상단 — 마우스가 화면 아래까지 내려갈 이유가 없고,
+ *            520px 폭 막대가 큰 화면 아래에 잘린 채 떠 있으면 어색하다
+ *
+ * nav 를 DOM 상 main 보다 먼저 두고, 모바일에서만 fixed 로 띄운다.
+ * 순서를 뒤집으면 데스크톱에서 탭이 아래로 내려간다.
  */
 
 const TABS = [
@@ -14,12 +20,10 @@ const TABS = [
 
 export function AppLayout() {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[520px] flex-col">
-      <main className="flex-1 pb-24">
-        <Outlet />
-      </main>
-
-      <nav className="fixed inset-x-0 bottom-0 mx-auto max-w-[520px] border-t border-neutral-200 bg-white">
+    <div
+      className="mx-auto flex min-h-dvh max-w-[520px] flex-col bg-white sm:my-6 sm:min-h-[calc(100dvh-3rem)] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-neutral-200 sm:shadow-sm"
+    >
+      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[520px] border-t border-neutral-200 bg-white sm:static sm:mx-0 sm:max-w-none sm:border-t-0 sm:border-b">
         <ul className="grid grid-cols-3">
           {TABS.map((tab) => (
             <li key={tab.to}>
@@ -27,12 +31,14 @@ export function AppLayout() {
                 to={tab.to}
                 end={tab.to === '/'}
                 className={({ isActive }) =>
-                  `flex flex-col items-center gap-0.5 py-2.5 text-xs ${
-                    isActive ? 'text-neutral-900' : 'text-neutral-400'
+                  `flex flex-col items-center gap-0.5 py-2.5 text-xs transition sm:flex-row sm:justify-center sm:gap-1.5 sm:py-3 sm:text-sm ${
+                    isActive
+                      ? 'text-neutral-900 sm:font-medium'
+                      : 'text-neutral-400 sm:hover:text-neutral-700'
                   }`
                 }
               >
-                <span aria-hidden className="text-base">
+                <span aria-hidden className="text-base sm:text-sm">
                   {tab.icon}
                 </span>
                 {tab.label}
@@ -41,6 +47,11 @@ export function AppLayout() {
           ))}
         </ul>
       </nav>
+
+      {/* 모바일은 하단 탭 높이만큼 여백이 필요하지만 데스크톱은 탭이 위에 있다. */}
+      <main className="flex-1 pb-24 sm:overflow-y-auto sm:pb-8">
+        <Outlet />
+      </main>
     </div>
   )
 }
