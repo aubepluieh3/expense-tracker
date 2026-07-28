@@ -53,6 +53,14 @@ export type SalaryWidgetRow = {
   next_salary_date: string
 }
 
+export type CategoryStatRow = {
+  category_id: string
+  name: string
+  emoji: string
+  color_slot: number
+  total: number
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -98,6 +106,14 @@ export interface Database {
         Args: { p_today: string }
         Returns: SalaryWidgetRow[]
       }
+      get_category_stats: {
+        Args: { p_month: string }
+        Returns: CategoryStatRow[]
+      }
+      get_lifetime_net: {
+        Args: Record<string, never>
+        Returns: number
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
@@ -108,18 +124,13 @@ export type Profile = ProfileRow
 export type Category = CategoryRow
 export type Transaction = TransactionRow
 
-/** 카테고리 색 팔레트 (기획서 §6.3). color_slot 1~8 에 대응. */
-export const CATEGORY_COLORS = [
-  '#2a78d6', // 1 파랑
-  '#eb6834', // 2 주황
-  '#1baf7a', // 3 청록
-  '#eda100', // 4 노랑
-  '#e87ba4', // 5 마젠타
-  '#008300', // 6 초록
-  '#4a3aa7', // 7 보라
-  '#e34948', // 8 빨강
-] as const
-
-export function categoryColor(slot: number) {
-  return CATEGORY_COLORS[(slot - 1) % CATEGORY_COLORS.length]
-}
+/**
+ * `categories.color_slot` 은 현재 화면 어디에서도 읽지 않는다.
+ *
+ * 통계 차트가 카테고리 고유색(8색 팔레트) 대신 순위 기반 단일 색조 램프를 쓰기로
+ * 바뀌었기 때문이다 — 이모지와 이름이 이미 정체성을 담당하므로 색을 그 일에서
+ * 풀어주면 순위를 나를 수 있다. 램프는 CategoryBarList 안에 있다.
+ *
+ * 컬럼과 create_category 의 슬롯 배정은 남겨 뒀다. 나중에 카테고리 고유색이
+ * 필요해질 여지가 있고, 지우면 마이그레이션과 RPC 를 되돌려야 한다.
+ */
