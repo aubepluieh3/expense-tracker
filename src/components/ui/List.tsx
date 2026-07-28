@@ -9,8 +9,7 @@
  * 과하게 추상화하면 네 화면 중 어느 것도 제대로 맞지 않는다.
  */
 
-/** 항목 사이 구분선 */
-export const listClass = 'divide-y divide-line'
+const listClass = 'divide-y divide-line'
 
 /** 행 공통 — 높이·간격·정렬 */
 export const rowClass = 'flex w-full items-center gap-3 py-3 text-left'

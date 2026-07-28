@@ -33,10 +33,6 @@ export function isValidMonth(value: string | null): value is Month {
   return !!value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
 }
 
-export function monthOf(iso: string): Month {
-  return iso.slice(0, 7)
-}
-
 export function shiftMonth(month: Month, delta: number): Month {
   const [y, m] = month.split('-').map(Number)
   const total = y * 12 + (m - 1) + delta

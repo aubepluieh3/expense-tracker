@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { authRedirectTo, supabase } from '@/lib/supabase'
 import { AuthLayout } from '@/components/AuthLayout'
+import { TextLink } from '@/components/ui/TextLink'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 
@@ -27,9 +27,9 @@ export default function ForgotPassword() {
         title="메일을 확인해 주세요"
         description={`해당 계정이 있다면 ${email} 로 재설정 링크를 보냈습니다.`}
         footer={
-          <Link to="/login" className="font-medium text-ink underline">
+          <TextLink to="/login">
             로그인 화면으로
-          </Link>
+          </TextLink>
         }
       >
         <></>
@@ -42,9 +42,7 @@ export default function ForgotPassword() {
       title="비밀번호 재설정"
       description="가입할 때 쓴 이메일로 재설정 링크를 보내드립니다."
       footer={
-        <Link to="/login" className="text-ink-2 underline">
-          로그인 화면으로
-        </Link>
+        <TextLink to="/login">로그인 화면으로</TextLink>
       }
     >
       <form onSubmit={onSubmit} className="space-y-4">

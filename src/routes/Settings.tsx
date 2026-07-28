@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
-import { Page } from '@/components/AppLayout'
+import { Page } from '@/components/ui/Screen'
 import { Button } from '@/components/ui/Button'
 import { List, rowClass } from '@/components/ui/List'
 import { PasswordField } from '@/components/ui/TextField'

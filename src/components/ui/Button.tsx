@@ -10,7 +10,6 @@ type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
  *
  * 이전에는 primary/ghost 두 종류뿐이라 ErrorState 의 "다시 시도"와 삭제 버튼이
  * 각자 인라인 스타일을 썼고, 결과적으로 버튼 모양이 다섯 가지가 됐다.
- * outline 과 danger 를 넣어 전부 흡수한다.
  */
 const VARIANT = {
   primary: 'bg-accent text-white hover:bg-accent-hover',
@@ -43,20 +42,7 @@ export function Button({
   )
 }
 
-/** 문장 안에서 다른 화면으로 보내는 링크. 인증 화면 4곳에 반복돼 있던 스타일. */
-export function TextLink({
-  children,
-  className = '',
-  ...rest
-}: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
-  return (
-    <a className={`font-medium text-ink underline ${className}`} {...rest}>
-      {children}
-    </a>
-  )
-}
-
-/** 행 안의 부수 동작 (수정 / 삭제 / 닫기). 4곳에 반복돼 있던 스타일. */
+/** 행 안의 부수 동작 (수정 / 삭제). 4곳에 반복돼 있던 스타일. */
 export function SubtleButton({
   children,
   className = '',

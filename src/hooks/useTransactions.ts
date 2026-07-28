@@ -52,10 +52,12 @@ export function useTransaction(id: string | null) {
     queryKey: qk.transaction(id ?? ''),
     enabled: !!id,
     queryFn: async (): Promise<TransactionListItem> => {
+      // enabled 로 막혀 있어 도달하지 않지만, ! 로 타입을 우회하지 않는다.
+      if (!id) throw new Error('거래 id 가 없습니다')
       const { data, error } = await supabase
         .from('transactions')
         .select('id, category_id, type, amount, occurred_on, memo, created_at')
-        .eq('id', id!)
+        .eq('id', id)
         .single()
       if (error) throw error
       return data

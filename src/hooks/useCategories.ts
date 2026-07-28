@@ -47,14 +47,27 @@ export function useProfile() {
   })
 }
 
-/** 특정 카테고리에 달린 거래 건수. 삭제 안내와 되살리기 안내에 쓴다. */
-export async function fetchTransactionCount(categoryId: string) {
-  const { count, error } = await supabase
-    .from('transactions')
-    .select('id', { count: 'exact', head: true })
-    .eq('category_id', categoryId)
-  if (error) throw error
-  return count ?? 0
+/**
+ * 특정 카테고리에 달린 거래 건수. 삭제 안내와 되살리기 안내에 쓴다.
+ *
+ * 이전에는 맨손 async 함수로 불러서 결과를 로컬 상태에 복사해 넣었다. 그래서
+ * 느린 네트워크에서 "삭제" 를 누르면 아무 반응이 없었다 — 로딩도, 에러 처리도,
+ * 캐시도 없었다. TanStack Query 를 쓰는 프로젝트에 이 하나만 예외였다.
+ */
+export function useTransactionCount(categoryId: string | null) {
+  return useQuery({
+    queryKey: qk.transactionCount(categoryId),
+    enabled: !!categoryId,
+    queryFn: async (): Promise<number> => {
+      if (!categoryId) throw new Error('카테고리 id 가 없습니다')
+      const { count, error } = await supabase
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('category_id', categoryId)
+      if (error) throw error
+      return count ?? 0
+    },
+  })
 }
 
 /** 같은 이름으로 삭제된 카테고리 찾기. 되살리기 제안의 근거. */

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { authRedirectTo, supabase } from '@/lib/supabase'
 import { AuthLayout } from '@/components/AuthLayout'
+import { TextLink } from '@/components/ui/TextLink'
 import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
@@ -83,12 +83,9 @@ export default function Signup() {
           */}
           <div className="rounded-control bg-surface-3 px-3.5 py-3 text-label text-ink-2">
             <p>이미 가입한 이메일이라면 새 링크가 오지 않습니다.</p>
-            <Link
-              to="/login"
-              className="mt-1.5 inline-block font-medium text-ink underline"
-            >
+            <TextLink to="/login" className="mt-1.5 inline-block">
               로그인하러 가기 →
-            </Link>
+            </TextLink>
           </div>
         </div>
       </AuthLayout>
@@ -101,9 +98,9 @@ export default function Signup() {
       footer={
         <span className="text-ink-2">
           이미 계정이 있으신가요?{' '}
-          <Link to="/login" className="font-medium text-ink underline">
+          <TextLink to="/login">
             로그인
-          </Link>
+          </TextLink>
         </span>
       }
     >

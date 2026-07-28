@@ -120,9 +120,7 @@ export interface Database {
   }
 }
 
-export type Profile = ProfileRow
 export type Category = CategoryRow
-export type Transaction = TransactionRow
 
 /**
  * `categories.color_slot` 은 현재 화면 어디에서도 읽지 않는다.

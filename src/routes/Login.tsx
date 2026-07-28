@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { authRedirectTo, supabase } from '@/lib/supabase'
 import { AuthLayout } from '@/components/AuthLayout'
+import { TextLink } from '@/components/ui/TextLink'
 import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
@@ -61,9 +62,9 @@ export default function Login() {
       footer={
         <span className="text-ink-2">
           계정이 없으신가요?{' '}
-          <Link to="/signup" className="font-medium text-ink underline">
+          <TextLink to="/signup">
             회원가입
-          </Link>
+          </TextLink>
         </span>
       }
     >

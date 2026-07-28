@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/Button'
+import { SegmentedControl, TYPE_OPTIONS } from '@/components/ui/SegmentedControl'
 import { CategoryChips } from '@/components/CategoryChips'
 import { Callout } from '@/components/ui/Callout'
 import { useAllCategories, useCategories } from '@/hooks/useCategories'
@@ -141,24 +142,15 @@ export function TransactionFormSheet({
 
       <form id="transaction-form" onSubmit={submit} className="space-y-4">
         {/* 거래의 대부분은 지출이라 지출이 기본 선택이다. */}
-        <div className="flex gap-1 rounded-control bg-surface-3 p-1">
-          {(['expense', 'income'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                if (t === type) return
-                setType(t)
-                setCategoryId(null) // 타입이 바뀌면 카테고리 선택은 무효다
-              }}
-              className={`flex-1 rounded-control py-2 text-label transition ${
-                type === t ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-muted'
-              }`}
-            >
-              {t === 'expense' ? '지출' : '수입'}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="수입·지출 구분"
+          options={TYPE_OPTIONS}
+          value={type}
+          onChange={(t) => {
+            setType(t)
+            setCategoryId(null) // 타입이 바뀌면 카테고리 선택은 무효다
+          }}
+        />
 
         <CategoryChips categories={chips} value={categoryId} onChange={setCategoryId} />
 

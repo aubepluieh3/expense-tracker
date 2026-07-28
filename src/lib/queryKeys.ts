@@ -43,6 +43,8 @@ const QUERIES = {
   transactions: def('transactions', ['transaction', 'category']),
   transaction: def('transaction', ['transaction']),
 
+  transactionCount: def('transaction-count', ['transaction', 'category']),
+
   monthSummary: def('month-summary', ['transaction']),
   // 통계는 카테고리 이름·이모지를 그대로 보여준다
   categoryStats: def('category-stats', ['transaction', 'category']),
@@ -61,7 +63,10 @@ export const qk = {
   categories: () => [QUERIES.categories.prefix] as const,
   profile: () => [QUERIES.profile.prefix] as const,
   transactions: (month: Month) => [QUERIES.transactions.prefix, month] as const,
-  transaction: (id: string) => [QUERIES.transaction.prefix, id] as const,
+  /** id 가 null 이면 enabled:false 로 실행되지 않는다. 가짜 sentinel 을 만들지 않는다. */
+  transaction: (id: string | null) => [QUERIES.transaction.prefix, id] as const,
+  transactionCount: (categoryId: string | null) =>
+    [QUERIES.transactionCount.prefix, categoryId] as const,
   monthSummary: (month: Month) => [QUERIES.monthSummary.prefix, month] as const,
   categoryStats: (month: Month) => [QUERIES.categoryStats.prefix, month] as const,
   salaryWidget: (today: string) => [QUERIES.salaryWidget.prefix, today] as const,

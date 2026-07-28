@@ -5,6 +5,15 @@ import { TextField } from '@/components/ui/TextField'
 import { Callout } from '@/components/ui/Callout'
 import { EmojiPicker } from '@/components/EmojiPicker'
 
+/**
+ * onSubmit 이 이걸 반환하면 시트를 닫지 않는다 — 부모가 이미 다른 시트를 열었다는 뜻.
+ *
+ * 필요해진 이유: 카테고리 관리가 삭제 확인·되살리기 제안을 하나의 sheet 상태로
+ * 합치면서, 되살리기를 열어도 폼이 성공으로 보고 onClose() 를 불러 바로 덮어버렸다.
+ * null(성공·닫기) / string(에러·유지) 두 가지로는 표현할 수 없는 세 번째 경우다.
+ */
+export const HANDLED = Symbol('handled')
+
 export function CategoryFormSheet({
   title,
   initial,
@@ -17,8 +26,8 @@ export function CategoryFormSheet({
   /** 급여 지정 토글처럼 폼 아래에 붙는 추가 항목 */
   extra?: React.ReactNode
   onClose: () => void
-  /** 에러 메시지를 반환하면 시트를 닫지 않고 표시한다. null 이면 성공. */
-  onSubmit: (v: { name: string; emoji: string }) => Promise<string | null>
+  /** null = 성공·닫기 · string = 에러 표시 · HANDLED = 부모가 처리했으니 닫지 않음 */
+  onSubmit: (v: { name: string; emoji: string }) => Promise<string | null | typeof HANDLED>
 }) {
   const [name, setName] = useState(initial?.name ?? '')
   const [emoji, setEmoji] = useState(initial?.emoji ?? '📦')
@@ -36,10 +45,11 @@ export function CategoryFormSheet({
     }
 
     setBusy(true)
-    const message = await onSubmit({ name: trimmed, emoji })
+    const result = await onSubmit({ name: trimmed, emoji })
     setBusy(false)
 
-    if (message) setError(message)
+    if (result === HANDLED) return
+    if (result) setError(result)
     else onClose()
   }
 
