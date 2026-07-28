@@ -8,7 +8,7 @@ import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { useMonthParam } from '@/hooks/useMonthParam'
 import { useAllCategories } from '@/hooks/useCategories'
 import { useMonthTransactions, useTransaction, type TransactionListItem } from '@/hooks/useTransactions'
-import { dayLabel } from '@/lib/month'
+import { dayLabel, today } from '@/lib/month'
 import { formatAmount } from '@/lib/format'
 import type { Category, CategoryType } from '@/types/database'
 
@@ -67,6 +67,7 @@ export default function Transactions() {
     )
   }
 
+  const todayIso = today()
   const filterActive = !!typeFilter || !!categoryFilter
   const inList = all.find((t) => t.id === editId)
   const fetched = useTransaction(editId && !inList ? editId : null)
@@ -176,10 +177,21 @@ export default function Transactions() {
 
         {groups.map(([date, items]) => {
           const net = items.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0)
+          // 날짜 내림차순이라 미래 거래가 목록 맨 위에 온다.
+          // 월급 위젯은 미래 지출을 "예정 지출"로 따로 뺐는데 목록에서 섞여 있으면
+          // 사용자가 오늘 날짜를 기억해야 "아직 안 나간 돈"임을 알 수 있다.
+          const upcoming = date > todayIso
           return (
             <div key={date} className="mb-5">
               <div className="flex items-baseline justify-between border-b border-neutral-100 pb-1.5">
-                <h2 className="text-sm text-neutral-500">{dayLabel(date)}</h2>
+                <h2 className="flex items-center gap-1.5 text-sm text-neutral-500">
+                  {dayLabel(date)}
+                  {upcoming && (
+                    <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500">
+                      예정
+                    </span>
+                  )}
+                </h2>
                 <span className="text-xs text-neutral-400">
                   {net >= 0 ? '+' : '−'}
                   {formatAmount(Math.abs(net))}
