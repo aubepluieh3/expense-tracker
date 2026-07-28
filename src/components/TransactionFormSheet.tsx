@@ -39,6 +39,7 @@ export function TransactionFormSheet({
   const [memo, setMemo] = useState(initial?.memo ?? '')
   const [error, setError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirmingClose, setConfirmingClose] = useState(false)
 
   const active = useCategories()
   const all = useAllCategories()
@@ -67,8 +68,16 @@ export function TransactionFormSheet({
       memo !== (initial.memo ?? '')
     : categoryId !== null || amount !== '' || memo !== '' || occurredOn !== today()
 
+  /**
+   * window.confirm 을 쓰지 않는다. 브라우저 기본 다이얼로그는 "localhost:5173에
+   * 표시된 메시지" 가 붙고 OS 스타일로 떠서 앱과 전혀 맞지 않는다. 삭제 확인은
+   * 이미 시트 안 인라인으로 처리하고 있었는데 이 경로만 빠져 있었다.
+   */
   function requestClose() {
-    if (dirty && !window.confirm('작성 중인 내용을 취소할까요?')) return
+    if (dirty) {
+      setConfirmingClose(true)
+      return
+    }
     onClose()
   }
 
@@ -114,6 +123,22 @@ export function TransactionFormSheet({
         </button>
       }
     >
+      {/* ✕ 를 누른 자리 바로 아래에 띄운다. 시트 아래쪽에 두면 방금 누른 곳에서
+          시선이 멀어진다. */}
+      {confirmingClose && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-control bg-surface-3 px-3.5 py-3">
+          <span className="text-label text-ink">작성 중인 내용을 버릴까요?</span>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="ghost" size="inline" onClick={() => setConfirmingClose(false)}>
+              계속 작성
+            </Button>
+            <Button variant="danger" size="inline" onClick={onClose}>
+              버리기
+            </Button>
+          </div>
+        </div>
+      )}
+
       <form id="transaction-form" onSubmit={submit} className="space-y-4">
         {/* 거래의 대부분은 지출이라 지출이 기본 선택이다. */}
         <div className="flex gap-1 rounded-control bg-surface-3 p-1">
