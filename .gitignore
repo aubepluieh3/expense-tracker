@@ -1,0 +1,21 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+
+.DS_Store
+*.log
+npm-debug.log*
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# 로컬 경로만 담고 있어 공유할 내용이 없음
+.claude/settings.json
+.claude/settings.local.json
