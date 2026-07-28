@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { currentUserId, supabase } from '@/lib/supabase'
+import { invalidateAfter, qk } from '@/lib/queryKeys'
 import type { Category, CategoryType } from '@/types/database'
 
 /** UNIQUE 제약 위반. 같은 이름이 이미 있다는 뜻(삭제된 것 포함). */
@@ -20,13 +21,13 @@ async function fetchCategories(): Promise<Category[]> {
  * 과거 거래에 붙은 카테고리는 삭제됐어도 이름·이모지를 보여줘야 한다.
  */
 export function useAllCategories() {
-  return useQuery({ queryKey: ['categories'], queryFn: fetchCategories })
+  return useQuery({ queryKey: qk.categories(), queryFn: fetchCategories })
 }
 
 /** 활성만. 선택 UI(칩 그리드, 관리 화면)에 쓴다. 같은 쿼리를 select 로 걸러 재사용한다. */
 export function useCategories() {
   return useQuery({
-    queryKey: ['categories'],
+    queryKey: qk.categories(),
     queryFn: fetchCategories,
     select: (rows) => rows.filter((c) => !c.deleted_at),
   })
@@ -34,7 +35,7 @@ export function useCategories() {
 
 export function useProfile() {
   return useQuery({
-    queryKey: ['profile'],
+    queryKey: qk.profile(),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
@@ -70,22 +71,10 @@ export async function findDeletedByName(type: CategoryType, name: string) {
   return data
 }
 
-/**
- * 카테고리가 바뀌면 카테고리 자체만 낡는 게 아니다.
- *
- *  - salary-widget : 급여 지정을 옮기거나 급여 카테고리를 지우면 위젯 기준이 바뀐다
- *  - category-stats: 통계는 카테고리 이름·이모지를 그대로 보여준다
- *
- * 처음에는 categories 와 profile 만 무효화해서, 급여 지정을 다른 카테고리로
- * 옮겨도 위젯이 낡은 값을 계속 보여줬다.
- */
+/** 무효화 목록은 lib/queryKeys.ts 의 의존 표 하나에서만 관리한다. */
 function useInvalidate() {
   const qc = useQueryClient()
-  return () => {
-    for (const key of [['categories'], ['profile'], ['salary-widget'], ['category-stats']]) {
-      void qc.invalidateQueries({ queryKey: key })
-    }
-  }
+  return () => invalidateAfter(qc, 'category')
 }
 
 export function useCreateCategory() {

@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { monthRange, today, type Month } from '@/lib/month'
+import { qk } from '@/lib/queryKeys'
 import type { MonthSummaryRow, SalaryWidgetRow } from '@/types/database'
 
 /** 월별 총수입 / 총지출 / 남은 금액 */
 export function useMonthSummary(month: Month) {
   return useQuery({
-    queryKey: ['month-summary', month],
+    queryKey: qk.monthSummary(month),
     queryFn: async (): Promise<MonthSummaryRow> => {
       const { data, error } = await supabase.rpc('get_month_summary', {
         p_month: monthRange(month).start,
@@ -36,7 +37,7 @@ export function usePrevMonthSummary(month: Month) {
 export function useSalaryWidget() {
   const p_today = today()
   return useQuery({
-    queryKey: ['salary-widget', p_today],
+    queryKey: qk.salaryWidget(p_today),
     queryFn: async (): Promise<SalaryWidgetRow | null> => {
       const { data, error } = await supabase.rpc('get_salary_widget', { p_today })
       if (error) throw error

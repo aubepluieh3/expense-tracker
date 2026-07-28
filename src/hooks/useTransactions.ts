@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { currentUserId, supabase } from '@/lib/supabase'
-import { invalidateTransactionRelated } from '@/lib/queryKeys'
+import { invalidateAfter, qk } from '@/lib/queryKeys'
 import { monthRange, type Month } from '@/lib/month'
 import type { CategoryType } from '@/types/database'
 
@@ -31,7 +31,7 @@ export type TransactionInput = {
  */
 export function useMonthTransactions(month: Month) {
   return useQuery({
-    queryKey: ['transactions', month],
+    queryKey: qk.transactions(month),
     queryFn: async (): Promise<TransactionListItem[]> => {
       const { start, end } = monthRange(month)
       const { data, error } = await supabase
@@ -49,7 +49,7 @@ export function useMonthTransactions(month: Month) {
 
 export function useTransaction(id: string | null) {
   return useQuery({
-    queryKey: ['transaction', id],
+    queryKey: qk.transaction(id ?? ''),
     enabled: !!id,
     queryFn: async (): Promise<TransactionListItem> => {
       const { data, error } = await supabase
@@ -65,7 +65,7 @@ export function useTransaction(id: string | null) {
 
 function useInvalidate() {
   const qc = useQueryClient()
-  return () => invalidateTransactionRelated(qc)
+  return () => invalidateAfter(qc, 'transaction')
 }
 
 export function useCreateTransaction() {
