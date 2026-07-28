@@ -68,7 +68,6 @@ export default function ResetPassword() {
           label="새 비밀번호"
           autoComplete="new-password"
           required
-          minLength={MIN_PASSWORD}
           hint={`${MIN_PASSWORD}자 이상`}
           value={password}
           onChange={(e) => setPassword(e.target.value)}

@@ -109,7 +109,6 @@ function ChangePasswordSheet({
           autoComplete="new-password"
           required
           autoFocus
-          minLength={MIN_PASSWORD}
           hint={`${MIN_PASSWORD}자 이상`}
           value={password}
           onChange={(e) => setPassword(e.target.value)}

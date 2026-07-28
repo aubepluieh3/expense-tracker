@@ -70,11 +70,21 @@ export async function findDeletedByName(type: CategoryType, name: string) {
   return data
 }
 
+/**
+ * 카테고리가 바뀌면 카테고리 자체만 낡는 게 아니다.
+ *
+ *  - salary-widget : 급여 지정을 옮기거나 급여 카테고리를 지우면 위젯 기준이 바뀐다
+ *  - category-stats: 통계는 카테고리 이름·이모지를 그대로 보여준다
+ *
+ * 처음에는 categories 와 profile 만 무효화해서, 급여 지정을 다른 카테고리로
+ * 옮겨도 위젯이 낡은 값을 계속 보여줬다.
+ */
 function useInvalidate() {
   const qc = useQueryClient()
   return () => {
-    void qc.invalidateQueries({ queryKey: ['categories'] })
-    void qc.invalidateQueries({ queryKey: ['profile'] })
+    for (const key of [['categories'], ['profile'], ['salary-widget'], ['category-stats']]) {
+      void qc.invalidateQueries({ queryKey: key })
+    }
   }
 }
 

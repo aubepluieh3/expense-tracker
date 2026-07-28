@@ -121,7 +121,8 @@ export default function Signup() {
           label="비밀번호"
           autoComplete="new-password"
           required
-          minLength={MIN_PASSWORD}
+          // minLength 를 걸지 않는다. HTML5 검증이 먼저 발동해서 아래 submit 의
+          // 우리 메시지가 절대 안 나오고, 브라우저 기본 툴팁이 앱 디자인과 다르게 뜬다.
           hint={`${MIN_PASSWORD}자 이상`}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
