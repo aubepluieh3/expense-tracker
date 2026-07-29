@@ -16,9 +16,76 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
     />
+
+    <!--
+      첫 진입 로더.
+
+      #root 가 비어 있는 동안 화면에 아무것도 없었다. 배포본 실측으로 느린 4G 에서
+      1.2초, 3G 에서 4.7초였다 — 앱 안의 FullScreenSpinner 는 React 가 마운트된
+      뒤에야 나오므로 이 구간을 덮지 못한다.
+
+      규칙 세 가지.
+        · JS 를 쓰지 않는다. 기다리는 대상이 바로 그 JS 다.
+        · 별도 요청을 만들지 않는다. 그래서 style 을 여기 인라인으로 둔다 —
+          번들 CSS 도 네트워크를 타므로 그걸 기다리면 같은 문제가 된다.
+        · FullScreenSpinner 와 똑같이 그린다. React 가 이어받는 순간 화면이
+          바뀌지 않아서 전환이 보이지 않고, 세션 확인 중 스피너가 번쩍이던 것도
+          같은 스피너가 계속 도는 것으로 이어진다.
+
+      색과 크기는 index.css 의 토큰과 같은 값을 손으로 적었다. 토큰을 참조하려면
+      그 CSS 를 기다려야 하는데, 그걸 기다리지 않는 것이 이 로더의 존재 이유다.
+      스피너를 바꿀 일이 생기면 두 곳을 함께 고친다.
+    -->
+    <style>
+      #boot {
+        display: grid;
+        min-height: 100dvh;
+        place-items: center;
+      }
+
+      /* React 가 #root 를 채우면 스스로 사라진다. :empty 는 자식이 하나도
+         없을 때만 맞으므로 마운트 여부와 정확히 일치한다. */
+      #root:not(:empty) ~ #boot {
+        display: none;
+      }
+
+      .boot-spinner {
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 9999px;
+        border: 2px solid #e5e5e5; /* --color-line-2 */
+        border-top-color: #262626; /* neutral-800 */
+        /* 0.2초 늦게 나타난다. 빠른 회선에서는 133ms 만에 앱이 뜨는데, 그때
+           스피너를 띄우면 긴 공백을 없애는 대신 새 깜빡임을 만든다. */
+        animation:
+          boot-spin 1s linear infinite,
+          boot-in 0.2s ease-out 0.2s both;
+      }
+
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes boot-in {
+        from {
+          opacity: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-spinner {
+          animation:
+            boot-spin 3s linear infinite,
+            boot-in 0.2s ease-out 0.2s both;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot" aria-hidden="true"><div class="boot-spinner"></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
