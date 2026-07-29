@@ -114,7 +114,7 @@ export default function Transactions() {
         }
       />
 
-      <SalaryWidget />
+      <SalaryWidget onRecordSalary={openNew} />
       <MonthSummary month={month} />
 
       {/* 사용자의 대부분은 "전체"로 본다. 필터 줄이 상시로 자리를 차지할 이유가 없다. */}
@@ -123,7 +123,13 @@ export default function Transactions() {
           type={typeFilter}
           categoryId={categoryFilter}
           options={filterOptions}
-          onChange={(patch) => patchParams(patch)}
+          // 적용하면 접는다. 패널이 열린 채 남으면 목록을 아래로 밀어내서
+          // 방금 걸러낸 결과를 보려고 필터 버튼을 한 번 더 눌러야 했다.
+          // 걸린 조건은 아래 요약 칩이 계속 보여주므로 패널이 남을 이유가 없다.
+          onChange={(patch) => {
+            patchParams(patch)
+            setFilterOpen(false)
+          }}
         />
       )}
 

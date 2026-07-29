@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/Button'
 import { SegmentedControl, TYPE_OPTIONS } from '@/components/ui/SegmentedControl'
@@ -12,8 +12,24 @@ import {
   type TransactionListItem,
 } from '@/hooks/useTransactions'
 import { digitsOnly, formatAmount } from '@/lib/format'
-import { addDays, today } from '@/lib/month'
+import { addDays, relativeDayLabel, today } from '@/lib/month'
 import type { CategoryType } from '@/types/database'
+
+/**
+ * 직전에 저장한 날짜. 다음 새 시트가 이걸 물려받는다.
+ *
+ * 주말에 지난주를 몰아 적으면 시트를 열 때마다 날짜가 오늘로 되돌아가서 매번
+ * 달력을 다시 열어야 했다. 직전 값을 물려주면 그 왕복이 사라진다.
+ *
+ * 모듈 스코프인 것은 의도다 — 새로고침하면 오늘로 초기화된다. localStorage 에
+ * 넣으면 어제 몰아 적기를 끝낸 날짜가 다음 날까지 살아남아, 오늘 점심값이
+ * 조용히 지난주로 들어간다. 몰아 적기는 한 번에 끝내는 작업이라 세션을 넘길
+ * 이유가 없다.
+ *
+ * 수정 시트는 여기에 쓰지 않는다. 과거 거래를 고치는 건 작업 날짜를 정하는
+ * 행동이 아니다.
+ */
+let carriedDate: string | null = null
 
 /**
  * 가계부가 버려지는 1위 원인은 기능 부족이 아니라 입력 귀찮음이다.
@@ -36,7 +52,13 @@ export function TransactionFormSheet({
   const [type, setType] = useState<CategoryType>(initial?.type ?? 'expense')
   const [categoryId, setCategoryId] = useState<string | null>(initial?.category_id ?? null)
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
-  const [occurredOn, setOccurredOn] = useState(initial?.occurred_on ?? today())
+  const [occurredOn, setOccurredOn] = useState(initial?.occurred_on ?? carriedDate ?? today())
+  /**
+   * 시트를 연 시점의 날짜. dirty 판정 기준이다.
+   * today() 와 비교하면 물려받은 날짜 때문에 열자마자 "작성 중"으로 판정돼서,
+   * 아무것도 안 하고 닫아도 확인창이 떴다.
+   */
+  const openedWith = useRef(occurredOn).current
   const [memo, setMemo] = useState(initial?.memo ?? '')
   const [error, setError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -80,7 +102,7 @@ export function TransactionFormSheet({
       amount !== String(initial.amount) ||
       occurredOn !== initial.occurred_on ||
       memo !== (initial.memo ?? '')
-    : categoryId !== null || amount !== '' || memo !== '' || occurredOn !== today()
+    : categoryId !== null || amount !== '' || memo !== '' || occurredOn !== openedWith
 
   /**
    * window.confirm 을 쓰지 않는다. 브라우저 기본 다이얼로그는 "localhost:5173에
@@ -113,7 +135,10 @@ export function TransactionFormSheet({
 
     try {
       if (isEdit) await update.mutateAsync({ id: initial.id, ...payload })
-      else await create.mutateAsync(payload)
+      else {
+        await create.mutateAsync(payload)
+        carriedDate = occurredOn
+      }
       onClose()
     } catch (e) {
       setError((e as Error).message)
@@ -121,6 +146,13 @@ export function TransactionFormSheet({
   }
 
   const busy = create.isPending || update.isPending
+  /**
+   * 오늘이면 null. 그 자체가 "알릴 게 없다"는 뜻이라 따로 isToday 를 두지 않는다.
+   *
+   * 수정 시트에서는 띄우지 않는다. 거기 날짜는 기록에서 온 값이라 조용히 틀릴
+   * 위험이 없고, 오늘 것이 아닌 거래를 열 때마다 배너가 떠서 소음이 된다.
+   */
+  const dateNotice = isEdit ? null : relativeDayLabel(occurredOn)
 
   return (
     <Sheet
@@ -187,19 +219,36 @@ export function TransactionFormSheet({
             </span>
           </label>
 
-          <div className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-label text-ink-muted">날짜</span>
-            <div className="flex flex-1 items-center justify-end gap-1.5">
-              {/* 실제 입력의 대부분이 어제/오늘이다. 달력은 예외 경로. */}
-              <QuickDate label="어제" value={addDays(today(), -1)} current={occurredOn} onPick={setOccurredOn} />
-              <QuickDate label="오늘" value={today()} current={occurredOn} onPick={setOccurredOn} />
-              <input
-                type="date"
-                value={occurredOn}
-                onChange={(e) => e.target.value && setOccurredOn(e.target.value)}
-                className="rounded-control border border-line-2 px-2 py-1.5 text-label text-ink outline-none focus:border-ink"
-              />
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="w-10 shrink-0 text-label text-ink-muted">날짜</span>
+              <div className="flex flex-1 items-center justify-end gap-1.5">
+                {/* 실제 입력의 대부분이 어제/오늘이다. 달력은 예외 경로. */}
+                <QuickDate label="어제" value={addDays(today(), -1)} current={occurredOn} onPick={setOccurredOn} />
+                <QuickDate label="오늘" value={today()} current={occurredOn} onPick={setOccurredOn} />
+                <input
+                  type="date"
+                  value={occurredOn}
+                  onChange={(e) => e.target.value && setOccurredOn(e.target.value)}
+                  // 오늘이 아니면 링 + 굵기로 표시한다. 색을 쓰지 않는 이유는 이 앱의
+                  // 강조색이 검정 하나뿐이고(index.css), 빨강은 삭제·초과에 예약돼 있어서다.
+                  // 선택된 칩과 같은 장치라 사용자가 이미 학습한 신호다.
+                  className={`rounded-control border border-line-2 px-2 py-1.5 text-label text-ink outline-none focus:border-ink ${
+                    dateNotice ? 'font-semibold ring-2 ring-ink' : ''
+                  }`}
+                />
+              </div>
             </div>
+
+            {/* 날짜 유지의 대가. 직전 날짜를 물려받으므로, 몰아 적기를 끝낸 뒤
+                오늘 것을 넣을 때 안 보고 저장하면 지난 날짜로 들어간다.
+                금액·월별 합계·월급 위젯이 함께 틀어지는데 에러는 나지 않는다.
+                그래서 없던 줄이 나타나게 했다 — 레이아웃 변화가 색보다 눈에 띈다. */}
+            {dateNotice && (
+              <p className="mt-2 rounded-control bg-selected px-3 py-1.5 text-right text-caption font-semibold text-ink">
+                {dateNotice} 날짜로 저장됩니다
+              </p>
+            )}
           </div>
 
           <label className="flex items-center gap-3">

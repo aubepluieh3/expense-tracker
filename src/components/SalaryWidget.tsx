@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { TextLink } from '@/components/ui/TextLink'
+import { useCategories, useProfile } from '@/hooks/useCategories'
 import { useSalaryWidget } from '@/hooks/useSummary'
 import { abbrevAmount, formatAmount } from '@/lib/format'
 import { daysBetween, shortDate, today } from '@/lib/month'
@@ -12,8 +13,10 @@ import { daysBetween, shortDate, today } from '@/lib/month'
  * 4줄로 압축했다 — 라벨 줄에 "N원 중 M%"를 붙이고, 지급일·다음 급여·예정 지출을
  * 한 줄로 합쳤다. 내역 화면 상단이 8줄까지 늘어나 거래가 4건만 보였다.
  */
-export function SalaryWidget() {
+export function SalaryWidget({ onRecordSalary }: { onRecordSalary?: () => void }) {
   const { data, isPending, isError } = useSalaryWidget()
+  const profile = useProfile()
+  const categories = useCategories()
 
   if (isPending) {
     return (
@@ -27,17 +30,42 @@ export function SalaryWidget() {
 
   if (isError) return null
 
-  // 급여 카테고리 미지정 / 삭제됨 / 급여 거래 없음
+  /**
+   * 위젯이 빈 이유는 셋이다 — 급여 카테고리 미지정 / 그 카테고리가 삭제됨 /
+   * 급여 거래가 없음. 안내를 하나로 뭉치면 링크가 절반의 사용자에게 헛다리다.
+   *
+   * 이전에는 세 경우 모두 카테고리 관리로 보냈다. 그런데 기본 카테고리에 급여가
+   * 이미 지정돼 있어서, 첫 사용자의 실제 원인은 대부분 "급여 거래를 안 넣음"이다.
+   * 카테고리 화면에 가면 이미 지정된 걸 보고 다시 돌아 나와야 했다.
+   */
   if (!data) {
+    const salaryId = profile.data?.salary_category_id
+    const designated = !!salaryId && (categories.data ?? []).some((c) => c.id === salaryId)
+
     return (
       <div className="mt-3 rounded-control bg-surface-2 px-4 py-3">
-        <p className="text-label text-ink-2">급여를 등록하면 남은 금액을 보여드려요</p>
-        <Link
-          to="/settings/categories"
-          className="mt-0.5 inline-block text-caption text-ink-muted underline"
-        >
-          급여 카테고리 확인하기
-        </Link>
+        {designated ? (
+          <>
+            <p className="text-label text-ink-2">급여를 등록하면 남은 금액을 보여드려요</p>
+            <button
+              type="button"
+              onClick={onRecordSalary}
+              className="mt-0.5 text-caption text-ink-muted underline"
+            >
+              급여 거래 등록하기
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-label text-ink-2">급여 카테고리를 정하면 남은 금액을 보여드려요</p>
+            <TextLink
+              to="/settings/categories"
+              className="mt-0.5 inline-block text-caption font-normal text-ink-muted"
+            >
+              급여 카테고리 지정하기
+            </TextLink>
+          </>
+        )}
       </div>
     )
   }

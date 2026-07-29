@@ -61,6 +61,20 @@ export function shortDate(iso: string): string {
   return `${m}.${d}`
 }
 
+/**
+ * '어제' · '6일 전' · '내일' · '2일 후'. 오늘이면 null — 알릴 게 없다.
+ *
+ * null 을 반환하는 게 호출부를 단순하게 만든다. "오늘인가" 판정과 "며칠 차이인가"를
+ * 따로 계산하면 두 값이 어긋날 수 있다.
+ */
+export function relativeDayLabel(iso: string, from: string = today()): string | null {
+  const diff = daysBetween(from, iso)
+  if (diff === 0) return null
+  if (diff === -1) return '어제'
+  if (diff === 1) return '내일'
+  return diff < 0 ? `${-diff}일 전` : `${diff}일 후`
+}
+
 /** to − from, 일 단위. 로컬 자정 기준으로 계산해 DST·타임존 영향을 받지 않는다. */
 export function daysBetween(from: string, to: string): number {
   const [y1, m1, d1] = from.split('-').map(Number)
