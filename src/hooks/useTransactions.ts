@@ -14,7 +14,8 @@ export type TransactionListItem = {
   created_at: string
 }
 
-export type TransactionInput = {
+/** 등록·수정이 공유하는 입력 모양. 이 파일 안에서만 쓴다. */
+type TransactionInput = {
   category_id: string
   type: CategoryType
   amount: number

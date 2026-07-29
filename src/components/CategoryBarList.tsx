@@ -118,8 +118,15 @@ export function CategoryChart({
   )
 }
 
-/** 스택 바만 따로 필요한 곳(대표 숫자 아래)에서 쓴다. */
-export function StackBar({ slices }: { slices: Slice[] }) {
+/**
+ * 대표 숫자 아래의 100% 스택 바.
+ *
+ * export 하지 않는다. "스택 바만 따로 필요한 곳에서 쓴다"고 적어 두고 export 했는데
+ * 그런 호출부는 생기지 않았고, Slice 가 이 파일 안에서만 만들어지므로 밖에서는
+ * 인자를 만들 방법도 없었다. 쓰이지 않는 export 는 공개 API 처럼 보여서
+ * 다음 사람이 유지해야 할 것으로 오해한다.
+ */
+function StackBar({ slices }: { slices: Slice[] }) {
   const grown = useGrow()
 
   // 카테고리가 하나뿐이면 전체가 한 색이라 정보가 없다.
@@ -183,7 +190,9 @@ function BarList({
                     </span>
                   )}
                 </span>
-                <span className={`text-body tabular-nums ${isOther ? 'text-ink-muted' : 'text-ink'}`}>
+                <span
+                  className={`text-body tabular-nums ${isOther ? 'text-ink-muted' : 'text-ink'}`}
+                >
                   {formatAmount(s.total)}
                 </span>
                 {/* 묶음의 비중은 정보가 약해서 % 를 비운다. */}
