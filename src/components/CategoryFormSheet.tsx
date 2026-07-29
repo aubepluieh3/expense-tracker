@@ -44,8 +44,15 @@ export function CategoryFormSheet({
       return
     }
 
+    /**
+     * 직접 입력 칸을 비웠으면 기본값으로 되돌린다. DB 트리거(0007)도 같은 값을
+     * 넣지만, 여기서 맞춰 두면 저장된 결과가 방금 화면에서 본 것과 같아진다 —
+     * 서버만 고치면 사용자는 빈 칸으로 저장했는데 📦 가 나타나는 걸 보게 된다.
+     */
+    const normalizedEmoji = emoji.trim() || '📦'
+
     setBusy(true)
-    const result = await onSubmit({ name: trimmed, emoji })
+    const result = await onSubmit({ name: trimmed, emoji: normalizedEmoji })
     setBusy(false)
 
     if (result === HANDLED) return

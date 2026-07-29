@@ -49,7 +49,9 @@ export function useMonthTransactions(month: Month) {
 
 export function useTransaction(id: string | null) {
   return useQuery({
-    queryKey: qk.transaction(id ?? ''),
+    // qk.transaction 이 null 을 받는다. '' 로 바꿔 넘기면 lib/queryKeys.ts 가
+    // 만들지 않겠다고 적어 둔 가짜 sentinel 을 호출부에서 다시 만드는 셈이다.
+    queryKey: qk.transaction(id),
     enabled: !!id,
     queryFn: async (): Promise<TransactionListItem> => {
       // enabled 로 막혀 있어 도달하지 않지만, ! 로 타입을 우회하지 않는다.

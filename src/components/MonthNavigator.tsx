@@ -64,6 +64,16 @@ export function MonthNavigator({
   )
 }
 
+/**
+ * 연도 이동 범위.
+ *
+ * 상한을 두지 않으면 2999년까지 갈 수 있었다. 깨지지는 않지만 빈 화면만 나오는
+ * 곳으로 사용자를 보내는 버튼이고, 돌아오려면 그만큼 다시 눌러야 한다.
+ * 과거는 몰아 적기를 감안해 넉넉히, 미래는 예정 거래 등록까지 한 해만.
+ */
+const YEARS_BACK = 10
+const YEARS_AHEAD = 1
+
 function MonthPicker({
   month,
   onPick,
@@ -76,21 +86,28 @@ function MonthPicker({
   const [year, setYear] = useState(Number(month.slice(0, 4)))
   const thisMonth = currentMonth()
 
+  const thisYear = Number(thisMonth.slice(0, 4))
+  // 이미 범위 밖의 달을 보고 있다면(URL 로 들어온 경우) 그 해까지는 허용한다.
+  const minYear = Math.min(thisYear - YEARS_BACK, year)
+  const maxYear = Math.max(thisYear + YEARS_AHEAD, year)
+
   return (
     <Sheet title="월 선택" onClose={onClose}>
       <div className="mb-4 flex items-center justify-center gap-6">
         <button
           aria-label="이전 해"
+          disabled={year <= minYear}
           onClick={() => setYear((y) => y - 1)}
-          className="size-8 rounded-control text-ink-muted hover:bg-surface-3"
+          className="size-8 rounded-control text-ink-muted hover:bg-surface-3 disabled:opacity-30 disabled:hover:bg-transparent"
         >
           ‹
         </button>
         <span className="text-base font-semibold text-ink">{year}년</span>
         <button
           aria-label="다음 해"
+          disabled={year >= maxYear}
           onClick={() => setYear((y) => y + 1)}
-          className="size-8 rounded-control text-ink-muted hover:bg-surface-3"
+          className="size-8 rounded-control text-ink-muted hover:bg-surface-3 disabled:opacity-30 disabled:hover:bg-transparent"
         >
           ›
         </button>

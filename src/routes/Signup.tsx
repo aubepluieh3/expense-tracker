@@ -5,6 +5,7 @@ import { TextLink } from '@/components/ui/TextLink'
 import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
+import { mailSendFailure } from '@/auth/authErrors'
 
 const MIN_PASSWORD = 8
 
@@ -53,13 +54,25 @@ export default function Signup() {
   }
 
   async function resend() {
+    setError('')
+    setNotice('')
     setBusy(true)
-    await supabase.auth.resend({
+    const { error: sendError } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim(),
       options: { emailRedirectTo: authRedirectTo('/') },
     })
     setBusy(false)
+
+    // "이미 가입한 이메일이라면 새 링크가 오지 않습니다" 안내가 계정 상태 쪽을
+    // 이미 덮는다. 여기서 알려야 하는 건 rate limit·네트워크 실패뿐이다.
+    if (sendError) {
+      const message = mailSendFailure(sendError)
+      if (message) {
+        setError(message)
+        return
+      }
+    }
     setNotice('인증 메일을 다시 보냈습니다.')
   }
 
@@ -71,6 +84,7 @@ export default function Signup() {
       >
         <div className="space-y-4">
           <Callout>{notice}</Callout>
+          <Callout tone="error">{error}</Callout>
 
           <Button variant="ghost" onClick={resend} loading={busy}>
             메일이 오지 않았나요? 다시 보내기

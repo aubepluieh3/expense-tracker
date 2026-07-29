@@ -6,7 +6,7 @@ import { TextLink } from '@/components/ui/TextLink'
 import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
-import { isEmailNotConfirmed } from '@/auth/authErrors'
+import { isEmailNotConfirmed, mailSendFailure } from '@/auth/authErrors'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -45,13 +45,24 @@ export default function Login() {
   }
 
   async function resendConfirmation() {
+    setError('')
     setBusy(true)
-    await supabase.auth.resend({
+    const { error: sendError } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim(),
       options: { emailRedirectTo: authRedirectTo('/') },
     })
     setBusy(false)
+
+    // rate limit 에 걸렸는데 "보냈습니다"를 띄우면 오지 않을 메일을 기다리게 된다.
+    // 계정 상태를 드러내는 에러는 mailSendFailure 가 null 로 걸러 준다.
+    if (sendError) {
+      const message = mailSendFailure(sendError)
+      if (message) {
+        setError(message)
+        return
+      }
+    }
     setUnconfirmed(false)
     setNotice('인증 메일을 다시 보냈습니다. 메일함을 확인해 주세요.')
   }

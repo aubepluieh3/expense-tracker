@@ -3,21 +3,38 @@ import { authRedirectTo, supabase } from '@/lib/supabase'
 import { AuthLayout } from '@/components/AuthLayout'
 import { TextLink } from '@/components/ui/TextLink'
 import { Button } from '@/components/ui/Button'
+import { Callout } from '@/components/ui/Callout'
 import { TextField } from '@/components/ui/TextField'
+import { mailSendFailure } from '@/auth/authErrors'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError('')
     setBusy(true)
-    await supabase.auth.resetPasswordForEmail(email.trim(), {
+    const { error: sendError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: authRedirectTo('/reset-password'),
     })
     setBusy(false)
-    // 계정이 없어도 성공으로 처리한다 — 있는지 없는지를 알려주면 계정 열거가 된다.
+
+    /**
+     * 계정이 없어도 성공으로 처리한다 — 있는지 없는지를 알려주면 계정 열거가 된다.
+     * Supabase 도 없는 주소에 에러를 주지 않으므로, 여기 도달하는 에러는
+     * rate limit·네트워크 같은 계정과 무관한 실패다. 그건 알려야 한다 —
+     * 삼키면 사용자가 오지 않을 메일을 기다린다.
+     */
+    if (sendError) {
+      const message = mailSendFailure(sendError)
+      if (message) {
+        setError(message)
+        return
+      }
+    }
     setSent(true)
   }
 
@@ -55,6 +72,7 @@ export default function ForgotPassword() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+        <Callout tone="error">{error}</Callout>
         <Button type="submit" loading={busy}>
           재설정 메일 받기
         </Button>
