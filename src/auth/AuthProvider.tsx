@@ -43,12 +43,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       knownUserId.current = nextId
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      trackUser(data.session)
-      setSession(data.session)
-      setLoading(false)
-    })
+    /**
+     * 거부(reject)를 처리한다. 이전에는 .then 하나뿐이어서, getSession() 이 실패하면
+     * setLoading(false) 에 도달하지 못했다 — loading 이 true 인 동안 두 가드가 모두
+     * FullScreenSpinner 를 돌리므로(auth/guards.tsx) 앱이 스피너에서 멈춘다.
+     *
+     * 실제로는 supabase-js 가 구독 직후 INITIAL_SESSION 을 쏘기 때문에 아래
+     * onAuthStateChange 가 loading 을 풀어 줄 때가 많다. 그건 이 코드가 의도한
+     * 복구 경로가 아니라 우연이고, 그동안 거부는 unhandled 로 남는다.
+     * 로딩을 끝내는 책임을 두 경로 각각이 갖게 한다.
+     */
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return
+        trackUser(data.session)
+        setSession(data.session)
+      })
+      .catch((e: unknown) => {
+        // 세션을 못 읽었으면 비로그인으로 취급한다. 가드가 로그인 화면으로 보낸다.
+        console.error('세션 조회 실패', e)
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
 
     // 로그인·로그아웃·토큰 갱신, 그리고 메일 링크로 들어온 세션까지 여기로 들어온다.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {

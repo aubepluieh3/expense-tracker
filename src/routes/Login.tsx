@@ -31,7 +31,8 @@ export default function Login() {
     setBusy(false)
 
     if (!error) {
-      navigate(from, { replace: true })
+      // react-router v7 의 navigate 는 Promise 를 반환한다. 기다릴 것이 없으므로 void.
+      void navigate(from, { replace: true })
       return
     }
 
@@ -72,10 +73,7 @@ export default function Login() {
       title="로그인"
       footer={
         <span className="text-ink-2">
-          계정이 없으신가요?{' '}
-          <TextLink to="/signup">
-            회원가입
-          </TextLink>
+          계정이 없으신가요? <TextLink to="/signup">회원가입</TextLink>
         </span>
       }
     >
