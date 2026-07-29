@@ -1,18 +1,17 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { NewPasswordForm } from '@/auth/NewPasswordForm'
 import { Page } from '@/components/ui/Screen'
 import { Button } from '@/components/ui/Button'
 import { List, rowClass } from '@/components/ui/List'
-import { PasswordField, TextField } from '@/components/ui/TextField'
+import { TextField } from '@/components/ui/TextField'
 import { Sheet } from '@/components/ui/Sheet'
 import { SubtleButton } from '@/components/ui/Button'
 import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { Callout } from '@/components/ui/Callout'
-import { supabase } from '@/lib/supabase'
 import { useProfile, useUpdateNickname } from '@/hooks/useCategories'
 
-const MIN_PASSWORD = 8
 const MAX_NICKNAME = 20
 
 export default function Settings() {
@@ -71,11 +70,18 @@ export default function Settings() {
           onDone={() => setSnack({ message: '닉네임을 변경했습니다.' })}
         />
       )}
+      {/* 폼은 /reset-password 와 같은 것을 쓴다 (auth/NewPasswordForm.tsx).
+          여기서 다른 것은 성공한 뒤에 할 일 — 시트를 닫고 스낵바를 띄운다. */}
       {pwOpen && (
-        <ChangePasswordSheet
-          onClose={() => setPwOpen(false)}
-          onDone={() => setSnack({ message: '비밀번호를 변경했습니다.' })}
-        />
+        <Sheet title="비밀번호 변경" onClose={() => setPwOpen(false)}>
+          <NewPasswordForm
+            autoFocus
+            onDone={() => {
+              setPwOpen(false)
+              setSnack({ message: '비밀번호를 변경했습니다.' })
+            }}
+          />
+        </Sheet>
       )}
       <Snackbar state={snack} onDismiss={() => setSnack(null)} />
     </Page>
@@ -138,66 +144,6 @@ function ChangeNicknameSheet({
         />
         <Callout tone="error">{error}</Callout>
         <Button type="submit" loading={update.isPending}>
-          변경하기
-        </Button>
-      </form>
-    </Sheet>
-  )
-}
-
-/**
- * 로그인 상태에서의 비밀번호 변경.
- *
- * 현재 비밀번호 재확인은 넣지 않는다. Supabase 는 세션만 있으면 변경해 주고,
- * 재확인을 구현하려면 signInWithPassword 로 한 번 더 검증하는 우회가 필요하다.
- * 비로그인 상태의 재설정은 /forgot-password 가 담당한다.
- */
-function ChangePasswordSheet({
-  onClose,
-  onDone,
-}: {
-  onClose: () => void
-  onDone: () => void
-}) {
-  const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-
-    if (password.length < MIN_PASSWORD) {
-      setError(`비밀번호는 ${MIN_PASSWORD}자 이상이어야 합니다`)
-      return
-    }
-
-    setBusy(true)
-    const { error } = await supabase.auth.updateUser({ password })
-    setBusy(false)
-
-    if (error) {
-      setError(error.message)
-      return
-    }
-    onDone()
-    onClose()
-  }
-
-  return (
-    <Sheet title="비밀번호 변경" onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4">
-        <PasswordField
-          label="새 비밀번호"
-          autoComplete="new-password"
-          required
-          autoFocus
-          hint={`${MIN_PASSWORD}자 이상`}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Callout tone="error">{error}</Callout>
-        <Button type="submit" loading={busy}>
           변경하기
         </Button>
       </form>
