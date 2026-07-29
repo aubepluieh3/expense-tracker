@@ -1,7 +1,15 @@
 import { mkdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { chromium } from 'playwright'
-import { APP, EMAIL, PASSWORD as PW, SECOND, SHOTS } from './config.mjs'
+import {
+  APP,
+  EMAIL,
+  HOME_PATH,
+  PASSWORD as PW,
+  SECOND,
+  SHOTS,
+  SPA_FALLBACK_404,
+} from './config.mjs'
 import { reset } from './reset.mjs'
 
 /**
@@ -116,6 +124,24 @@ async function waitUntil(fn, msg, timeout = 5000) {
   throw new Error(`${msg} (${timeout}ms 대기)`)
 }
 
+/**
+ * 무시해도 되는 콘솔 에러.
+ *
+ * 400/401 = 의도한 잘못된 로그인, 409 = 의도한 중복 이름(UNIQUE 위반).
+ *
+ * 404 는 조건부다. GitHub Pages 배포본은 SPA 폴백을 404.html 로 하므로 주소를
+ * 직접 열 때마다 **문서 요청**이 404 로 온다 (화면은 정상). 그건 걸러내되
+ * **에셋 404 는 그대로 실패로 남긴다** — 번들·폰트가 빠진 것은 진짜 사고다.
+ * m.location().url 에 실패한 주소가 실려 오므로 확장자로 구분한다.
+ */
+const ASSET = /\.(js|mjs|css|woff2?|ttf|png|jpe?g|svg|ico|json|map)(\?|$)/
+function ignorableConsoleError(m) {
+  const text = m.text()
+  if (/ERR_ABORTED|40[019] \(\)/.test(text)) return true
+  if (SPA_FALLBACK_404 && /404 \(\)/.test(text) && !ASSET.test(m.location()?.url ?? '')) return true
+  return false
+}
+
 /* ─────────────────────────────────────────────────────────────────── 실행 */
 const browser = await chromium.launch()
 
@@ -125,9 +151,9 @@ for (round = 1; round <= ROUNDS; round++) {
 
   const page = await browser.newPage({ viewport: { width: 420, height: 900 } })
   page.on('console', (m) => {
-    // 400/401 = 의도한 잘못된 로그인, 409 = 의도한 중복 이름(UNIQUE 위반)
-    if (m.type() === 'error' && !/ERR_ABORTED|40[019] \(\)/.test(m.text()))
-      consoleErrors.push(m.text())
+    if (m.type() !== 'error') return
+    if (ignorableConsoleError(m)) return
+    consoleErrors.push(m.text())
   })
   page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e}`))
 
@@ -224,7 +250,7 @@ for (round = 1; round <= ROUNDS; round++) {
 
   await check('인증', '로그인 상태로 /login 접근 → 홈으로', async () => {
     await page.goto(`${APP}/login`, { waitUntil: 'domcontentloaded' })
-    await page.waitForURL((u) => new URL(u).pathname === '/', { timeout: 20000 })
+    await page.waitForURL((u) => new URL(u).pathname === HOME_PATH, { timeout: 20000 })
   })
 
   /* ── 2. 첫 사용자 빈 상태 ─────────────────────────────────────────── */
@@ -877,7 +903,13 @@ for (round = 1; round <= ROUNDS; round++) {
   /* ── 9. 데스크톱 ──────────────────────────────────────────────────── */
   await page.close()
   const desk = await browser.newPage({ viewport: { width: 1440, height: 900 } })
-  desk.on('console', (m) => m.type() === 'error' && consoleErrors.push(`[desktop] ${m.text()}`))
+  // 모바일 페이지와 같은 필터를 쓴다. 여기만 걸러내지 않으면 배포본에서
+  // 데스크톱 goto 의 문서 404 가 그대로 쌓인다.
+  desk.on('console', (m) => {
+    if (m.type() !== 'error') return
+    if (ignorableConsoleError(m)) return
+    consoleErrors.push(`[desktop] ${m.text()}`)
+  })
 
   await check('데스크톱', '상단 탭 · ＋추가 버튼 · FAB 없음', async () => {
     await desk.goto(APP, { waitUntil: 'domcontentloaded' })
