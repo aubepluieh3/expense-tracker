@@ -176,10 +176,7 @@ export function useRestoreCategory() {
   const invalidate = useInvalidate()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('categories')
-        .update({ deleted_at: null })
-        .eq('id', id)
+      const { error } = await supabase.from('categories').update({ deleted_at: null }).eq('id', id)
       if (error) throw error
     },
     onSuccess: invalidate,

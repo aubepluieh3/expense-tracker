@@ -7,8 +7,16 @@ import { EMAIL, PASSWORD, SUPABASE_ANON as ANON, SUPABASE_URL as URL } from './c
  * 열려 있는지 확인해 주는 셈이다. service_role 을 쓰면 그 검증이 사라진다.
  */
 const DEFAULTS = [
-  '식비', '카페·간식', '교통', '주거·통신', '생활용품', '문화·여가',
-  '급여', '용돈', '금융수입', '기타수입',
+  '식비',
+  '카페·간식',
+  '교통',
+  '주거·통신',
+  '생활용품',
+  '문화·여가',
+  '급여',
+  '용돈',
+  '금융수입',
+  '기타수입',
 ]
 
 let token = ''

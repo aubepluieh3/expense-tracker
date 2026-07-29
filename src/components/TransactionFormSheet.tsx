@@ -302,8 +302,18 @@ export function TransactionFormSheet({
               <span className="w-10 shrink-0 text-label text-ink-muted">날짜</span>
               <div className="flex flex-1 items-center justify-end gap-1.5">
                 {/* 실제 입력의 대부분이 어제/오늘이다. 달력은 예외 경로. */}
-                <QuickDate label="어제" value={addDays(todayIso, -1)} current={occurredOn} onPick={setOccurredOn} />
-                <QuickDate label="오늘" value={todayIso} current={occurredOn} onPick={setOccurredOn} />
+                <QuickDate
+                  label="어제"
+                  value={addDays(todayIso, -1)}
+                  current={occurredOn}
+                  onPick={setOccurredOn}
+                />
+                <QuickDate
+                  label="오늘"
+                  value={todayIso}
+                  current={occurredOn}
+                  onPick={setOccurredOn}
+                />
                 <input
                   type="date"
                   value={occurredOn}

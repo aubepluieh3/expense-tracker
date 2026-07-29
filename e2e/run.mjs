@@ -50,7 +50,15 @@ async function check(area, name, fn) {
     results.push({ round, area, name, ok: true, ms: Date.now() - t0 })
   } catch (e) {
     if (e?.[SKIP]) {
-      results.push({ round, area, name, ok: true, skipped: true, why: e.message, ms: Date.now() - t0 })
+      results.push({
+        round,
+        area,
+        name,
+        ok: true,
+        skipped: true,
+        why: e.message,
+        ms: Date.now() - t0,
+      })
       return
     }
     let shot = null
@@ -66,7 +74,9 @@ async function check(area, name, fn) {
           name,
           ok: false,
           ms: Date.now() - t0,
-          err: `${String(e.message ?? e).split('\n')[0].slice(0, 110)}  [dialog=${dialogOpen} url=${url}] → ${relative(process.cwd(), shot)}`,
+          err: `${String(e.message ?? e)
+            .split('\n')[0]
+            .slice(0, 110)}  [dialog=${dialogOpen} url=${url}] → ${relative(process.cwd(), shot)}`,
         })
         return
       } catch {
@@ -79,7 +89,9 @@ async function check(area, name, fn) {
       name,
       ok: false,
       ms: Date.now() - t0,
-      err: String(e.message ?? e).split('\n')[0].slice(0, 150),
+      err: String(e.message ?? e)
+        .split('\n')[0]
+        .slice(0, 150),
     })
   }
 }
@@ -220,15 +232,19 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.getByText('아직 기록이 없어요').waitFor({ timeout: 20000 })
   })
 
-  await check('빈 상태', '월급 위젯 — 급여 카테고리는 이미 지정돼 있으니 거래 등록으로 보낸다', async () => {
-    await page.getByText('급여를 등록하면 남은 금액을 보여드려요').waitFor({ timeout: 15000 })
-    await page.getByRole('button', { name: '급여 거래 등록하기' }).waitFor({ timeout: 5000 })
-    // 카테고리 관리로 보내면 이미 지정된 걸 보고 돌아 나와야 한다
-    expect(
-      (await page.getByRole('link', { name: /급여 카테고리/ }).count()) === 0,
-      '급여 카테고리가 지정돼 있는데 카테고리 관리로 보낸다',
-    )
-  })
+  await check(
+    '빈 상태',
+    '월급 위젯 — 급여 카테고리는 이미 지정돼 있으니 거래 등록으로 보낸다',
+    async () => {
+      await page.getByText('급여를 등록하면 남은 금액을 보여드려요').waitFor({ timeout: 15000 })
+      await page.getByRole('button', { name: '급여 거래 등록하기' }).waitFor({ timeout: 5000 })
+      // 카테고리 관리로 보내면 이미 지정된 걸 보고 돌아 나와야 한다
+      expect(
+        (await page.getByRole('link', { name: /급여 카테고리/ }).count()) === 0,
+        '급여 카테고리가 지정돼 있는데 카테고리 관리로 보낸다',
+      )
+    },
+  )
 
   await check('빈 상태', '위젯의 "급여 거래 등록하기" 가 시트를 연다', async () => {
     await page.getByRole('button', { name: '급여 거래 등록하기' }).click()
@@ -268,10 +284,7 @@ for (round = 1; round <= ROUNDS; round++) {
     const chips = grid().locator('button[aria-pressed]')
     expect((await chips.count()) === 6, `지출 카테고리 6개여야 하는데 ${await chips.count()}개`)
     await chip(/^식비/).click()
-    expect(
-      (await chip(/^식비/).getAttribute('aria-pressed')) === 'true',
-      '칩 선택이 안 됨',
-    )
+    expect((await chip(/^식비/).getAttribute('aria-pressed')) === 'true', '칩 선택이 안 됨')
   })
 
   await check('등록', '거래 0건 — "최근" 줄이 없다', async () => {
@@ -314,10 +327,7 @@ for (round = 1; round <= ROUNDS; round++) {
 
   await check('등록', '천단위 콤마 · 어제 버튼 · 메모', async () => {
     await dlg().getByPlaceholder('0').fill('12000')
-    expect(
-      (await dlg().getByPlaceholder('0').inputValue()) === '12,000',
-      '천단위 콤마가 안 붙음',
-    )
+    expect((await dlg().getByPlaceholder('0').inputValue()) === '12,000', '천단위 콤마가 안 붙음')
     await dlg().getByRole('button', { name: '어제' }).click()
     await dlg().getByPlaceholder('선택').fill('점심 김밥천국')
   })
@@ -356,10 +366,7 @@ for (round = 1; round <= ROUNDS; round++) {
 
   await check('등록', '최근 사용과 무관하게 그리드 순서는 생성순 고정', async () => {
     const order = await chipNames(grid())
-    expect(
-      order.join(',') === DEFAULT_EXPENSE_ORDER,
-      `그리드가 재정렬됐다: ${order.join(',')}`,
-    )
+    expect(order.join(',') === DEFAULT_EXPENSE_ORDER, `그리드가 재정렬됐다: ${order.join(',')}`)
   })
 
   /* 날짜 물려받기 — 직전 거래를 [어제]로 저장했으므로 어제가 남아 있어야 한다 */
@@ -375,10 +382,7 @@ for (round = 1; round <= ROUNDS; round++) {
 
   await check('등록', '오늘이 아니면 경고 줄 + 링 표시', async () => {
     await dlg().getByText('어제 날짜로 저장됩니다').waitFor({ timeout: 10000 })
-    expect(
-      (await dateInput().getAttribute('class'))?.includes('ring-2'),
-      '날짜 필드에 링이 없다',
-    )
+    expect((await dateInput().getAttribute('class'))?.includes('ring-2'), '날짜 필드에 링이 없다')
   })
 
   await check('등록', '물려받은 날짜만으로는 dirty 가 아니다 (확인창 없이 닫힘)', async () => {
@@ -394,7 +398,9 @@ for (round = 1; round <= ROUNDS; round++) {
     await dlg().getByRole('button', { name: '오늘' }).click()
     await page.waitForTimeout(200)
     expect(
-      (await dlg().getByText(/날짜로 저장됩니다/).count()) === 0,
+      (await dlg()
+        .getByText(/날짜로 저장됩니다/)
+        .count()) === 0,
       '오늘로 되돌렸는데 경고 줄이 남아 있다',
     )
     // 물려받은 날짜를 바꿨으니 이제는 dirty 다 — 확인을 받고 버린다
@@ -469,7 +475,10 @@ for (round = 1; round <= ROUNDS; round++) {
     await dlg().getByRole('button', { name: '이전 해' }).click()
     await dlg().getByRole('button', { name: '3월' }).click()
     await dlg().waitFor({ state: 'detached', timeout: 10000 })
-    expect(new URL(page.url()).searchParams.get('month')?.endsWith('-03'), 'month 파라미터가 3월이 아님')
+    expect(
+      new URL(page.url()).searchParams.get('month')?.endsWith('-03'),
+      'month 파라미터가 3월이 아님',
+    )
   })
 
   await check('월 이동', '뒤로가기로 이전 달 복귀', async () => {
@@ -491,7 +500,10 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.waitForTimeout(600)
     const viewed = new URL(page.url()).searchParams.get('month')
 
-    await page.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().click()
+    await page
+      .getByRole('button', { name: /거래 추가|기록 시작하기/ })
+      .first()
+      .click()
     await dlg().waitFor({ timeout: 15000 })
     const sheetDate = await dlg().locator('input[type="date"]').inputValue()
     expect(!sheetDate.startsWith(viewed), `이 검증은 시트 날짜가 다른 달일 때만 성립: ${sheetDate}`)
@@ -706,7 +718,9 @@ for (round = 1; round <= ROUNDS; round++) {
   await check('카테고리', '거래 있는 카테고리 삭제 → 건수 안내', async () => {
     const row = page.locator('li', { hasText: '식비' }).first()
     await row.getByRole('button', { name: '삭제' }).click()
-    await dlg().getByText(/기록된 거래 1건과 과거 통계는 그대로 유지됩니다/).waitFor({ timeout: 15000 })
+    await dlg()
+      .getByText(/기록된 거래 1건과 과거 통계는 그대로 유지됩니다/)
+      .waitFor({ timeout: 15000 })
     await dlg().getByRole('button', { name: '취소' }).click()
     await dlg().waitFor({ state: 'detached', timeout: 10000 })
   })
@@ -801,11 +815,17 @@ for (round = 1; round <= ROUNDS; round++) {
     try {
       await page2.goto(APP, { waitUntil: 'domcontentloaded' }) // 유일한 goto
       await login(EMAIL, PW)
-      await page2.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().waitFor({ timeout: 30000 })
+      await page2
+        .getByRole('button', { name: /거래 추가|기록 시작하기/ })
+        .first()
+        .waitFor({ timeout: 30000 })
       const loadsAfterLogin = loads
 
       // A 에 표식을 남긴다 (거래 메모로 충분하다 — 카테고리는 건드리지 않는다)
-      await page2.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().click()
+      await page2
+        .getByRole('button', { name: /거래 추가|기록 시작하기/ })
+        .first()
+        .click()
       await dlg2().waitFor({ timeout: 15000 })
       await dlg2()
         .getByRole('group', { name: '카테고리', exact: true })
@@ -824,7 +844,10 @@ for (round = 1; round <= ROUNDS; round++) {
       await page2.getByRole('button', { name: '로그아웃' }).click()
       await page2.waitForURL(/\/login/, { timeout: 20000 })
       await login(SECOND.email, SECOND.password)
-      await page2.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().waitFor({ timeout: 30000 })
+      await page2
+        .getByRole('button', { name: /거래 추가|기록 시작하기/ })
+        .first()
+        .waitFor({ timeout: 30000 })
 
       // 페이지가 다시 로드됐다면 캐시가 사라져 검증이 성립하지 않는다
       expect(
@@ -906,7 +929,11 @@ for (const area of areas) {
     })
     const failed = rows.find((r) => r.name === name && !r.ok)
     const skipped = rows.find((r) => r.name === name && r.skipped)
-    const tail = failed ? `\n         → ${failed.err}` : skipped ? `\n         ⊘ ${skipped.why}` : ''
+    const tail = failed
+      ? `\n         → ${failed.err}`
+      : skipped
+        ? `\n         ⊘ ${skipped.why}`
+        : ''
     console.log(`   ${per.join(' ')}  ${name}${tail}`)
   }
   console.log()

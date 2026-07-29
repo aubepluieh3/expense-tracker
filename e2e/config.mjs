@@ -46,7 +46,10 @@ function need(obj, key, file) {
   return v
 }
 
-export const SUPABASE_URL = need(app, 'VITE_SUPABASE_URL', '.env.local').replace(/\/rest\/v1\/?$/, '')
+export const SUPABASE_URL = need(app, 'VITE_SUPABASE_URL', '.env.local').replace(
+  /\/rest\/v1\/?$/,
+  '',
+)
 export const SUPABASE_ANON = need(app, 'VITE_SUPABASE_ANON_KEY', '.env.local')
 export const EMAIL = need(test, 'E2E_EMAIL', '.env.test.local')
 export const PASSWORD = need(test, 'E2E_PASSWORD', '.env.test.local')
