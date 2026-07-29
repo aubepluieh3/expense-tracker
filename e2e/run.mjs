@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { chromium } from 'playwright'
-import { APP, EMAIL, PASSWORD as PW, SHOTS } from './config.mjs'
+import { APP, EMAIL, PASSWORD as PW, SECOND, SHOTS } from './config.mjs'
 import { reset } from './reset.mjs'
 
 /**
@@ -767,6 +767,88 @@ for (round = 1; round <= ROUNDS; round++) {
   await check('설정', '로그아웃 후 보호된 경로 접근 차단', async () => {
     await page.goto(`${APP}/settings`, { waitUntil: 'domcontentloaded' })
     await page.waitForURL(/\/login/, { timeout: 20000 })
+  })
+
+  /* ── 8.5 세션 전환 캐시 유출 ──────────────────────────────────────── */
+  /**
+   * RLS 는 서버 쪽 격리를 해 주지만 React Query 캐시는 그 바깥이다.
+   * queryClient 는 모듈 싱글턴이라 로그아웃해도 살아남고 staleTime 이 30초라,
+   * 같은 탭에서 A 로그아웃 → B 로그인 하면 B 가 A 의 데이터를 그대로 본다.
+   *
+   * **최초 1회만 goto 하고 이후는 클릭으로만 이동해야 한다.** goto 는 전체
+   * 페이지 로드라 queryClient 가 새로 만들어진다 — 처음 이 검증을 쓸 때 중간에
+   * goto 를 넣어서, 수정을 껐는데도 통과하는 헛도는 테스트를 만들었다.
+   *
+   * B 계정은 읽기 전용이다. reset 을 걸지 않고 아무것도 쓰지 않는다.
+   */
+  await check('격리', '로그아웃 → 다른 계정 로그인 시 앞 사용자 캐시가 안 보인다', async () => {
+    if (!SECOND) skip('.env.test.local 에 E2E_EMAIL_2 / E2E_PASSWORD_2 가 없다')
+
+    const MARK = `유출확인-${round}`
+    const page2 = await browser.newPage({ viewport: { width: 420, height: 900 } })
+    currentPage = page2
+    let loads = 0
+    page2.on('load', () => (loads += 1))
+    const dlg2 = () => page2.getByRole('dialog')
+    const tab = (name) => page2.getByRole('link', { name: new RegExp(name) }).click()
+    const login = async (email, password) => {
+      await page2.waitForSelector('text=로그인', { timeout: 30000 })
+      await page2.getByLabel('이메일').fill(email)
+      await page2.getByLabel('비밀번호').fill(password)
+      await page2.getByRole('button', { name: '로그인' }).click()
+    }
+
+    try {
+      await page2.goto(APP, { waitUntil: 'domcontentloaded' }) // 유일한 goto
+      await login(EMAIL, PW)
+      await page2.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().waitFor({ timeout: 30000 })
+      const loadsAfterLogin = loads
+
+      // A 에 표식을 남긴다 (거래 메모로 충분하다 — 카테고리는 건드리지 않는다)
+      await page2.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().click()
+      await dlg2().waitFor({ timeout: 15000 })
+      await dlg2()
+        .getByRole('group', { name: '카테고리', exact: true })
+        .getByRole('button', { name: /^식비/ })
+        .click()
+      await dlg2().getByPlaceholder('0').fill('54321')
+      await dlg2().getByPlaceholder('선택').fill(MARK)
+      await page2.getByRole('button', { name: '저장' }).click()
+      await dlg2().waitFor({ state: 'detached', timeout: 20000 })
+      await page2.getByText(MARK).waitFor({ timeout: 15000 })
+
+      await tab('설정')
+      await page2.getByRole('button', { name: '로그아웃' }).waitFor({ timeout: 15000 })
+      const aNick = (await page2.locator('body').innerText()).match(/닉네임\s*\n?\s*(\S+)/)?.[1]
+
+      await page2.getByRole('button', { name: '로그아웃' }).click()
+      await page2.waitForURL(/\/login/, { timeout: 20000 })
+      await login(SECOND.email, SECOND.password)
+      await page2.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().waitFor({ timeout: 30000 })
+
+      // 페이지가 다시 로드됐다면 캐시가 사라져 검증이 성립하지 않는다
+      expect(
+        loads - loadsAfterLogin === 0,
+        `중간에 페이지가 ${loads - loadsAfterLogin}번 다시 로드돼 검증이 성립하지 않는다`,
+      )
+
+      const leaks = new Set()
+      for (const where of ['내역', '통계', '설정']) {
+        if (where !== '내역') await tab(where)
+        for (let i = 0; i < 12; i++) {
+          const body = await page2.locator('body').innerText()
+          if (body.includes(MARK)) leaks.add(`${where}: 앞 사용자의 거래 메모`)
+          if (body.includes('54,321')) leaks.add(`${where}: 앞 사용자의 금액`)
+          if (aNick && body.includes(aNick) && !body.includes(SECOND.email.split('@')[0]))
+            leaks.add(`${where}: 앞 사용자의 닉네임 ${aNick}`)
+          await page2.waitForTimeout(70)
+        }
+      }
+      expect(leaks.size === 0, `앞 사용자 데이터가 보인다 — ${[...leaks].join(' / ')}`)
+    } finally {
+      currentPage = page
+      await page2.close()
+    }
   })
 
   /* ── 9. 데스크톱 ──────────────────────────────────────────────────── */
