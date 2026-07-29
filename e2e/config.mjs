@@ -72,5 +72,25 @@ export const SECOND =
 /** 개발 서버 주소. vite.config.ts 가 strictPort 5173 으로 고정돼 있다. */
 export const APP = test.E2E_BASE_URL || 'http://localhost:5173'
 
+/**
+ * 앱 루트의 pathname. dev 는 '/', 배포본은 '/expense-tracker/' 다
+ * (GitHub Pages 프로젝트 사이트 — vite.config.ts 의 BASE).
+ *
+ * pathname 을 '/' 로 박아서 비교하면 배포본에서 영원히 기다린다. 실제로
+ * "로그인 상태로 /login 접근 → 홈으로" 가 그렇게 20초를 기다리고 죽었다.
+ */
+export const HOME_PATH = new URL(APP.endsWith('/') ? APP : `${APP}/`).pathname
+
+/**
+ * 문서 요청의 404 를 무시해도 되는가.
+ *
+ * GitHub Pages 는 리라이트를 줄 수 없어서 SPA 폴백을 404.html 로 한다 — 주소를
+ * 직접 열면 화면은 정상이어도 상태가 404 이고, 콘솔에 한 건씩 남는다. 이 테스트는
+ * goto 를 많이 하므로 그것만으로 8건이 쌓인다.
+ *
+ * 하위 경로 배포일 때만 켠다. 에셋이 빠진 404 는 어느 쪽에서도 계속 잡는다.
+ */
+export const SPA_FALLBACK_404 = HOME_PATH !== '/'
+
 /** 실패 스크린샷을 남기는 곳. 저장소에 커밋하지 않는다. */
 export const SHOTS = join(root, 'e2e', 'shots')
