@@ -1112,7 +1112,9 @@
               고르면 됩니다.
             </p>
             <div class="cta-row rise">
-              <a class="btn btn-primary" href="/signup">시작하기</a>
+              <!-- 상대 경로로 둔다. '/signup' 으로 고정하면 하위 경로에 배포했을 때
+                   레포 밖을 가리킨다 (github.io/signup). -->
+              <a class="btn btn-primary" href="signup">시작하기</a>
               <a class="btn btn-ghost" href="#features">기능 보기</a>
             </div>
             <ul class="meta-row rise">
@@ -1499,7 +1501,7 @@
                 지난 달을 몰아서 채우지 않아도 됩니다. 급여 한 건과 오늘 지출 한 건이면 화면이 제
                 역할을 시작합니다.
               </p>
-              <a class="btn btn-primary" href="/">가계부 열기</a>
+              <a class="btn btn-primary" href="./">가계부 열기</a>
             </div>
 
             <footer class="foot">

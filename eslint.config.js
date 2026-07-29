@@ -71,9 +71,14 @@ export default tseslint.config(
   },
 
   // ── 설정 파일
+  //
+  // .ts 가 섞여 있으므로 TS 파서를 쓴다. 기본 파서(espree)로 두면 TS 문법이
+  // 들어오는 순간 "Parsing error" 로 죽는다 — vite.config.ts 에 타입 주석을
+  // 하나 붙였을 때 실제로 그랬다. 타입 정보를 쓰는 규칙(TypeChecked)은 켜지
+  // 않는다: 설정 파일까지 프로젝트에 넣으면 린트가 앱 빌드에 묶인다.
   {
     files: ['*.config.{js,ts}'],
-    extends: [js.configs.recommended, prettier],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended, prettier],
     languageOptions: { globals: globals.node },
   },
 )

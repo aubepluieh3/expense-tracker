@@ -49,17 +49,34 @@ jobs:
 
   # 배포. 정적 호스팅으로 끝난다 — 올릴 것은 dist/ 뿐이다.
   #
-  # verify 를 통과한 main 만 나간다. PR 에서는 돌지 않는다 — 포크 PR 에 시크릿을
-  # 내주지 않기 위해서이기도 하고, PR 마다 프로덕션에 올릴 이유도 없다.
+  # verify 를 통과한 main 만 나간다. PR 에서는 돌지 않는다 — PR 마다 프로덕션에
+  # 올릴 이유가 없다.
+  #
+  # GitHub Pages 를 쓴다. 배포에 외부 자격 증명이 필요 없다는 것이 이유다 —
+  # 아래 permissions 로 이 실행에만 주어지는 OIDC 토큰으로 인증하므로, 계정
+  # 토큰을 만들어 시크릿에 넣는 단계가 사라진다. 대가는 하위 경로다
+  # (aubepluieh3.github.io/expense-tracker/) — vite.config.ts 의 BASE 참고.
   deploy:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
-    env:
-      # pages.dev 주소가 이 이름에서 나온다. 전역으로 유일해야 하므로 이미 쓰이는
-      # 이름이면 프로젝트 생성이 실패한다 — 그럴 때 고칠 곳은 여기 한 줄이다.
-      PROJECT: expense-tracker
+    # 기본값은 contents: read 뿐이다. Pages 배포에는 아래 둘이 더 필요하다.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    # 같은 시각에 두 배포가 겹치면 나중 것이 거부된다. 큐에 세운다 —
+    # 진행 중인 것을 취소하지 않는다(cancel-in-progress: false). 배포는
+    # 중간에 끊는 것보다 끝내는 게 안전하다.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +92,7 @@ jobs:
       - name: 시크릿 확인
         run: |
           missing=""
-          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
             eval "value=\$$name"
             if [ -z "$value" ]; then missing="$missing $name"; fi
           done
@@ -86,10 +103,10 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - run: npm ci
+
+      - uses: actions/configure-pages@v6
 
       # anon key 는 공개돼도 되는 값이다 — 데이터 격리는 RLS 가 강제한다.
       # 그래도 시크릿에 두는 이유는 프로젝트 주소를 레포에 박지 않기 위해서다.
@@ -99,19 +116,15 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
-      # 첫 배포에서는 프로젝트가 없다. 이미 있으면 이 단계가 실패하는데 그건 정상이라
-      # 넘긴다 — 다음 단계의 배포가 실제 성공 여부를 말한다.
-      - name: Pages 프로젝트 준비
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project create ${{ env.PROJECT }} --production-branch=main
+      # dist/404.html 이 있어야 새로고침과 메일 링크가 산다 (vite.config.ts 의
+      # spaFallback). 빌드가 조용히 안 만들면 배포는 성공하고 기능만 죽으므로
+      # 여기서 확인한다.
+      - name: SPA 폴백 확인
+        run: test -f dist/404.html || { echo "::error::dist/404.html 이 없다"; exit 1; }
 
-      - name: 배포
-        uses: cloudflare/wrangler-action@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=${{ env.PROJECT }} --branch=main
+          path: dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v5
