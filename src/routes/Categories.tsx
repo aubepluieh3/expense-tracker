@@ -17,12 +17,11 @@ import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
-  useProfile,
   useRestoreCategory,
-  useSetSalaryCategory,
   useTransactionCount,
   useUpdateCategory,
 } from '@/hooks/useCategories'
+import { useProfile, useSetSalaryCategory } from '@/hooks/useProfile'
 
 /**
  * 열려 있는 시트는 항상 하나다.

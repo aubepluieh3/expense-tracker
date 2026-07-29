@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/auth/AuthProvider'
+import { useAuth } from '@/auth/authContext'
 import { NewPasswordForm } from '@/auth/NewPasswordForm'
 import { AuthLayout } from '@/components/AuthLayout'
 import { TextLink } from '@/components/ui/TextLink'

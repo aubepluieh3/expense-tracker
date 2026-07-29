@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/auth/AuthProvider'
+import { useAuth } from '@/auth/authContext'
 import { NewPasswordForm } from '@/auth/NewPasswordForm'
 import { Page } from '@/components/ui/Screen'
 import { Button } from '@/components/ui/Button'
@@ -10,7 +10,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { SubtleButton } from '@/components/ui/Button'
 import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { Callout } from '@/components/ui/Callout'
-import { useProfile, useUpdateNickname } from '@/hooks/useCategories'
+import { useProfile, useUpdateNickname } from '@/hooks/useProfile'
 import { MAX_NICKNAME, nicknameError, normalizeSpaces } from '@/lib/rules'
 
 export default function Settings() {

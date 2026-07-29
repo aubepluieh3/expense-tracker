@@ -1,5 +1,6 @@
 import { TextLink } from '@/components/ui/TextLink'
-import { useCategories, useProfile } from '@/hooks/useCategories'
+import { useCategories } from '@/hooks/useCategories'
+import { useProfile } from '@/hooks/useProfile'
 import { useSalaryWidget } from '@/hooks/useSummary'
 import { useToday } from '@/hooks/useToday'
 import { abbrevAmount, formatAmount } from '@/lib/format'

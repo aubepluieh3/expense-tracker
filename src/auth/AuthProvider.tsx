@@ -1,18 +1,10 @@
-import { createContext, use, useEffect, useMemo, useRef, useState } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/queryClient'
+import { AuthContext, type AuthValue } from '@/auth/authContext'
 
-type AuthValue = {
-  session: Session | null
-  user: User | null
-  /** 최초 세션 확인이 끝나기 전까지 true. 이 사이에 렌더하면 로그인 화면이 깜빡인다. */
-  loading: boolean
-  signOut: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthValue | null>(null)
-
+/** 컨텍스트와 useAuth 는 authContext.ts 다 — 이 파일은 컴포넌트만 export 한다(HMR). */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -94,10 +86,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 
   return <AuthContext value={value}>{children}</AuthContext>
-}
-
-export function useAuth() {
-  const ctx = use(AuthContext)
-  if (!ctx) throw new Error('useAuth 는 AuthProvider 안에서만 쓸 수 있습니다.')
-  return ctx
 }
