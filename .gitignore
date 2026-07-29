@@ -8,6 +8,9 @@ dist-ssr
 .env.local
 .env.*.local
 
+# 실패한 검증의 화면. 실행할 때마다 새로 만들어진다
+e2e/shots/
+
 .DS_Store
 *.log
 npm-debug.log*
