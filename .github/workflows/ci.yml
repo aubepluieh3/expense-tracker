@@ -34,6 +34,12 @@ jobs:
       - name: 타입 검사
         run: npm run typecheck
 
+      # 순수 함수만 덮는다 (lib/month · lib/format · lib/rules · auth/password).
+      # 날짜 경계·금액 축약·DB 제약과 짝이 맞는 검증처럼, 오늘 날짜에 따라
+      # 우연히만 지나가는 것들을 고정하는 자리다.
+      - name: 단위 테스트
+        run: npm test
+
       # 빌드는 타입 검사와 겹치지만(tsc -b && vite build) Vite 단계에서만
       # 드러나는 실패가 있다 — 라우트 단위 코드 스플리팅의 동적 import 경로 오타.
       - name: 빌드
