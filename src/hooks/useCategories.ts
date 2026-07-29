@@ -33,6 +33,27 @@ export function useCategories() {
   })
 }
 
+/**
+ * 마지막으로 사용한 순서의 카테고리 id 목록 (최근 → 오래된).
+ *
+ * 칩 그리드는 여전히 생성순 고정이다. 이 순서는 그리드 위 "최근" 줄에만 쓴다.
+ * 그리드까지 사용순으로 재정렬하면 입력할 때마다 칩 위치가 바뀌어서, 익숙한
+ * 자리를 안 보고 누르는 사람이 조용히 다른 카테고리로 저장하게 된다.
+ *
+ * 타입 구분과 개수 제한은 호출하는 쪽에서 한다 — 화면이 이미 타입별로 걸러진
+ * 칩 목록을 들고 있으므로 교집합만 취하면 되고, 노출 개수도 화면 사정이다.
+ */
+export function useRecentCategoryIds() {
+  return useQuery({
+    queryKey: qk.recentCategories(),
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase.rpc('get_recent_category_ids')
+      if (error) throw error
+      return data.map((r) => r.category_id)
+    },
+  })
+}
+
 export function useProfile() {
   return useQuery({
     queryKey: qk.profile(),

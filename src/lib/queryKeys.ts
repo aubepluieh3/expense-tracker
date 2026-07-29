@@ -38,6 +38,8 @@ const def = (prefix: string, staleOn: readonly Trigger[]): QueryDef => ({ prefix
 const QUERIES = {
   categories: def('categories', ['category']),
   profile: def('profile', ['category']),
+  // 거래를 넣으면 순서가 바뀌고, 카테고리를 지우면 목록에서 빠져야 한다
+  recentCategories: def('recent-categories', ['transaction', 'category']),
 
   // 거래 행이 카테고리 이름·이모지를 쓴다
   transactions: def('transactions', ['transaction', 'category']),
@@ -62,6 +64,7 @@ const QUERIES = {
 export const qk = {
   categories: () => [QUERIES.categories.prefix] as const,
   profile: () => [QUERIES.profile.prefix] as const,
+  recentCategories: () => [QUERIES.recentCategories.prefix] as const,
   transactions: (month: Month) => [QUERIES.transactions.prefix, month] as const,
   /** id 가 null 이면 enabled:false 로 실행되지 않는다. 가짜 sentinel 을 만들지 않는다. */
   transaction: (id: string | null) => [QUERIES.transaction.prefix, id] as const,

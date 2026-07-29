@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { SegmentedControl, TYPE_OPTIONS } from '@/components/ui/SegmentedControl'
 import { CategoryChips } from '@/components/CategoryChips'
 import { Callout } from '@/components/ui/Callout'
-import { useAllCategories, useCategories } from '@/hooks/useCategories'
+import { useAllCategories, useCategories, useRecentCategoryIds } from '@/hooks/useCategories'
 import {
   useCreateTransaction,
   useDeleteTransaction,
@@ -44,6 +44,7 @@ export function TransactionFormSheet({
 
   const active = useCategories()
   const all = useAllCategories()
+  const recentIds = useRecentCategoryIds()
   const create = useCreateTransaction()
   const update = useUpdateTransaction()
   const remove = useDeleteTransaction()
@@ -56,6 +57,18 @@ export function TransactionFormSheet({
     const orphan = all.data?.find((c) => c.id === categoryId)
     return orphan && orphan.type === type ? [...list, orphan] : list
   }, [active.data, all.data, type, categoryId])
+
+  /**
+   * 그리드 위에 따로 붙는 "최근" 줄. 최근 사용순 id 를 이번 타입의 칩과 교집합한다.
+   *
+   * 시트가 열려 있는 동안에는 절대 바뀌지 않는다 — 무효화는 저장 성공 시점에
+   * 일어나고 그때 시트는 닫힌다(refetchOnWindowFocus 도 꺼 두었다).
+   * 고르는 중에 칩이 움직이면 이 줄을 따로 둔 의미가 없어진다.
+   */
+  const recent = useMemo(() => {
+    const byId = new Map(chips.map((c) => [c.id, c]))
+    return (recentIds.data ?? []).flatMap((id) => byId.get(id) ?? [])
+  }, [recentIds.data, chips])
 
   /**
    * 새 거래는 "사용자가 뭔가 입력했는가"로 판단한다.
@@ -152,7 +165,12 @@ export function TransactionFormSheet({
           }}
         />
 
-        <CategoryChips categories={chips} value={categoryId} onChange={setCategoryId} />
+        <CategoryChips
+          categories={chips}
+          recent={recent}
+          value={categoryId}
+          onChange={setCategoryId}
+        />
 
         <div className="space-y-3 border-t border-line pt-4">
           <label className="flex items-center gap-3">

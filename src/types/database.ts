@@ -114,6 +114,10 @@ export interface Database {
         Args: Record<string, never>
         Returns: number
       }
+      get_recent_category_ids: {
+        Args: Record<string, never>
+        Returns: { category_id: string }[]
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
