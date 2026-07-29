@@ -56,6 +56,7 @@ export function TransactionFormSheet({
   initial,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   initial?: TransactionListItem
   onClose: () => void
@@ -64,6 +65,12 @@ export function TransactionFormSheet({
    * "지금 보는 달에 없는 거래를 저장했는가"를 판단해야 하기 때문이다.
    */
   onSaved?: (occurredOn: string) => void
+  /**
+   * 삭제 성공 시 닫기 대신 이걸 부른다. 지운 행을 넘기는 이유는 호출부가
+   * 실행 취소 스낵바를 띄워야 하고, 되살리려면 값이 필요하기 때문이다.
+   * 스낵바는 시트가 닫힌 뒤에도 남아야 하므로 이 컴포넌트가 가질 수 없다.
+   */
+  onDeleted?: (item: TransactionListItem) => void
 }) {
   const isEdit = !!initial
 
@@ -81,6 +88,13 @@ export function TransactionFormSheet({
   const [error, setError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [confirmingClose, setConfirmingClose] = useState(false)
+  /**
+   * 상한에 닿아 입력이 잘렸다는 표시.
+   *
+   * amount.length === AMOUNT_DIGITS 로 판단하지 않는다 — 9자리를 정확히 채운
+   * 정상 입력(999,999,999)에도 경고가 붙는다. 잘린 것은 값이 아니라 사건이다.
+   */
+  const [amountCapped, setAmountCapped] = useState(false)
 
   /**
    * 자정을 넘겨도 "어제"·"오늘" 버튼과 경고 줄이 같은 날을 가리키게 한다.
@@ -177,10 +191,10 @@ export function TransactionFormSheet({
   }
 
   /** id 를 인자로 받는다 — isEdit 분기 안에서만 불리지만 ! 로 타입을 우회하지 않는다. */
-  async function confirmDelete(id: string) {
+  async function confirmDelete(item: TransactionListItem) {
     setError('')
     try {
-      await remove.mutateAsync(id)
+      await remove.mutateAsync(item.id)
     } catch (e) {
       // 이전에는 catch 가 없어서, 확인까지 누른 삭제가 실패하면 시트가 그대로
       // 남고 아무 메시지도 없었다.
@@ -188,7 +202,10 @@ export function TransactionFormSheet({
       setError('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.')
       return
     }
-    onClose()
+    // 지운 행을 그대로 넘긴다 — 실행 취소를 하려면 되살릴 값이 필요하고,
+    // 그 값을 아는 마지막 지점이 여기다(시트는 곧 닫힌다).
+    if (onDeleted) onDeleted(item)
+    else onClose()
   }
 
   const busy = create.isPending || update.isPending
@@ -245,25 +262,40 @@ export function TransactionFormSheet({
 
         <CategoryChips
           categories={chips}
+          type={type}
           recent={recent}
           value={categoryId}
           onChange={setCategoryId}
         />
 
         <div className="space-y-3 border-t border-line pt-4">
-          <label className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-label text-ink-muted">금액</span>
-            <span className="flex flex-1 items-baseline justify-end gap-1">
-              <input
-                inputMode="numeric"
-                placeholder="0"
-                value={amount ? formatAmount(Number(amount)) : ''}
-                onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, AMOUNT_DIGITS))}
-                className="w-full bg-transparent text-right text-xl font-semibold text-ink outline-none placeholder:text-ink-muted"
-              />
-              <span className="text-label text-ink-muted">원</span>
-            </span>
-          </label>
+          <div>
+            <label className="flex items-center gap-3">
+              <span className="w-10 shrink-0 text-label text-ink-muted">금액</span>
+              <span className="flex flex-1 items-baseline justify-end gap-1">
+                <input
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={amount ? formatAmount(Number(amount)) : ''}
+                  onChange={(e) => {
+                    const digits = digitsOnly(e.target.value)
+                    setAmountCapped(digits.length > AMOUNT_DIGITS)
+                    setAmount(digits.slice(0, AMOUNT_DIGITS))
+                  }}
+                  className="w-full bg-transparent text-right text-xl font-semibold text-ink outline-none placeholder:text-ink-muted"
+                />
+                <span className="text-label text-ink-muted">원</span>
+              </span>
+            </label>
+
+            {/* 자리수로 막는 것만으로는 키보드가 안 먹는 것처럼 보인다.
+                상한 자체는 옳지만, 왜 안 들어가는지 모르는 것이 문제였다. */}
+            {amountCapped && (
+              <p className="mt-1 text-right text-caption text-ink-muted">
+                최대 {formatAmount(10 ** AMOUNT_DIGITS - 1)}원까지 입력할 수 있어요
+              </p>
+            )}
+          </div>
 
           <div>
             <div className="flex items-center gap-3">
@@ -325,7 +357,7 @@ export function TransactionFormSheet({
                   variant="danger"
                   size="inline"
                   loading={remove.isPending}
-                  onClick={() => void confirmDelete(initial.id)}
+                  onClick={() => void confirmDelete(initial)}
                 >
                   삭제
                 </Button>

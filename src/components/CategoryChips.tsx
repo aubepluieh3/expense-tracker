@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { Category } from '@/types/database'
+import { TextLink } from '@/components/ui/TextLink'
+import type { Category, CategoryType } from '@/types/database'
 
 const VISIBLE = 8
 
@@ -21,11 +22,14 @@ const RECENT = 3
  */
 export function CategoryChips({
   categories,
+  type,
   recent = [],
   value,
   onChange,
 }: {
   categories: Category[]
+  /** 빈 상태 문구에만 쓴다 — "지출 카테고리가 없습니다" 가 "카테고리가 없습니다" 보다 정확하다. */
+  type: CategoryType
   /**
    * 최근 사용순 전체. 몇 개를 노출할지는 이 컴포넌트가 정한다 — 한 줄에 몇 칸이
    * 들어가는지는 그리드를 그리는 쪽만 안다.
@@ -75,24 +79,44 @@ export function CategoryChips({
           <Chip key={c.id} category={c} selected={c.id === value} onSelect={onChange} />
         ))}
 
-        {overflow && !expanded && (
+        {/*
+          펼치기·접기는 카테고리가 아니다. 이전에는 칩과 똑같은 모양으로 8번째
+          칸에 앉아 있어서 "더보기" 라는 이름의 카테고리처럼 읽혔다 — 이모지
+          자리에 ⋯ 가 있고 아래에 글자가 있는 구조가 칩과 같았다.
+          점선 테두리로 "칸이지만 항목은 아니다"를 표시한다.
+
+          접기를 함께 둔다. 한 번 펼치면 되돌릴 수 없어서, 열 개를 넘기면
+          시트가 길어진 채로 남았다. 여는 문에는 닫는 손잡이가 있어야 한다.
+        */}
+        {overflow && (
           <button
             type="button"
-            onClick={() => setExpanded(true)}
-            className="flex flex-col items-center justify-center gap-0.5 rounded-control px-1 py-2.5 text-caption text-ink-muted hover:bg-surface-3"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="flex flex-col items-center justify-center gap-0.5 rounded-control border border-dashed border-line-2 px-1 py-2.5 text-caption text-ink-2 hover:bg-surface-3"
           >
-            <span aria-hidden className="text-xl">
-              ⋯
+            {/* ▴ 는 통계의 "N개 ▾" 와 같은 글리프다 — 펼침·접힘 표시가 앱에 하나여야 한다. */}
+            <span aria-hidden className="text-xl leading-none">
+              {expanded ? '▴' : '⋯'}
             </span>
-            더보기
+            {expanded ? '접기' : '더보기'}
           </button>
         )}
       </div>
 
+      {/*
+        막다른 골목을 없앤다. "설정에서 추가해 주세요" 만 있으면 시트를 닫고
+        탭을 옮겨 두 단계를 더 가야 한다 — 그 경로를 아는 사람에게만 통하는 안내다.
+      */}
       {categories.length === 0 && (
-        <p className="py-4 text-center text-label text-ink-muted">
-          카테고리가 없습니다. 설정에서 추가해 주세요.
-        </p>
+        <div className="py-4 text-center">
+          <p className="text-label text-ink-muted">
+            {type === 'expense' ? '지출' : '수입'} 카테고리가 없습니다.
+          </p>
+          <TextLink to="/settings/categories" className="mt-1.5 inline-block text-label">
+            카테고리 만들러 가기 →
+          </TextLink>
+        </div>
       )}
     </div>
   )

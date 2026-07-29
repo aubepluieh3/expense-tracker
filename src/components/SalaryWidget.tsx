@@ -3,7 +3,7 @@ import { useCategories, useProfile } from '@/hooks/useCategories'
 import { useSalaryWidget } from '@/hooks/useSummary'
 import { useToday } from '@/hooks/useToday'
 import { abbrevAmount, formatAmount } from '@/lib/format'
-import { daysBetween, shortDate } from '@/lib/month'
+import { currentMonth, daysBetween, shortDate, type Month } from '@/lib/month'
 
 /**
  * "이번 월급 얼마 남았지?" 에 직접 답하는 위젯 (기획서 §3.6).
@@ -14,12 +14,34 @@ import { daysBetween, shortDate } from '@/lib/month'
  * 4줄로 압축했다 — 라벨 줄에 "N원 중 M%"를 붙이고, 지급일·다음 급여·예정 지출을
  * 한 줄로 합쳤다. 내역 화면 상단이 8줄까지 늘어나 거래가 4건만 보였다.
  */
-export function SalaryWidget({ onRecordSalary }: { onRecordSalary?: () => void }) {
+export function SalaryWidget({
+  month,
+  onRecordSalary,
+}: {
+  /** 보고 있는 달. 이번 달이 아니면 위젯을 내린다. */
+  month: Month
+  onRecordSalary?: () => void
+}) {
   const { data, isPending, isError } = useSalaryWidget()
   const profile = useProfile()
   const categories = useCategories()
   // 아래 이른 반환들보다 위에서 부른다 — 훅은 조건 뒤에 올 수 없다.
   const todayIso = useToday()
+
+  /**
+   * 이번 달에만 보여준다.
+   *
+   * 이 위젯의 기간 축은 달력월이 아니라 월급 사이클이라, 어느 달을 보고 있든
+   * 같은 값을 낸다. 그래서 6월로 넘겨도 "7.29 지급 · 다음 급여까지 31일 ·
+   * 3,188,000원" 이 그대로 붙어 있었고, 바로 아래 "6월 남은 금액 +0" 과 나란히
+   * 놓이니 위 숫자도 6월 것으로 읽혔다. 게다가 두 숫자가 8만원 차이로 겹쳐
+   * (위젯은 예정 지출 제외, 월 요약은 포함) 어느 게 내 돈인지 물어야 했다.
+   *
+   * 계산을 보고 있는 달에 맞추는 방법도 있지만 그건 "월급 남은 돈" 의 뜻을 바꾸는
+   * 일이다. 지난달의 월급 잔액은 이미 끝난 이야기이고, 다른 달을 여는 이유는
+   * 그달의 기록을 확인하려는 것이다. 답이 없는 질문이면 묻지 않는 편이 낫다.
+   */
+  if (month !== currentMonth()) return null
 
   if (isPending) {
     return (

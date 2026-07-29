@@ -36,8 +36,11 @@ export function SegmentedControl<T extends string>({
           onClick={() => {
             if (o.value !== value) onChange(o.value)
           }}
+          // 고르지 않은 쪽도 ink-2 다. ink-muted(#a3a3a3) 는 placeholder·보조
+          // 수치용 회색이라, 옅은 트랙 위에 얹으니 "수입" 이 비활성 버튼처럼
+          // 보였다 — 지출/수입은 둘 다 언제나 누를 수 있는 선택지다.
           className={`flex-1 rounded-control py-2 text-label transition ${
-            value === o.value ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-muted'
+            value === o.value ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-2'
           }`}
         >
           {o.label}

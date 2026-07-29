@@ -10,10 +10,12 @@ import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/Button'
 import { Screen } from '@/components/ui/Screen'
 import { Sheet } from '@/components/ui/Sheet'
+import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { PlusIcon } from '@/components/ui/icons'
 import { useMonthParam } from '@/hooks/useMonthParam'
 import { useAllCategories } from '@/hooks/useCategories'
 import {
+  useCreateTransaction,
   useMonthTransactions,
   useTransaction,
   type TransactionListItem,
@@ -29,6 +31,8 @@ export default function Transactions() {
   const [month, setMonth] = useMonthParam()
   const [params, setParams] = useSearchParams()
   const [filterOpen, setFilterOpen] = useState(false)
+  const [snack, setSnack] = useState<SnackbarState>(null)
+  const recreate = useCreateTransaction()
 
   const typeFilter = params.get('type') as CategoryType | null
   const categoryFilter = params.get('category')
@@ -78,7 +82,21 @@ export default function Transactions() {
     return [...map.entries()]
   }, [visible])
 
-  function patchParams(patch: Record<string, string | null>) {
+  /**
+   * URL 이 이 화면의 상태 저장소다. 달·필터는 replace, 시트는 push 한다.
+   *
+   * 시트를 replace 로 열면 히스토리에 자리가 생기지 않는다. 그러면 뒤로가기가
+   * 시트를 닫는 대신 **직전 화면으로 나가고**, 히스토리가 얕으면 앱 밖으로 나간다.
+   * 실제로 통계 → 내역 → ＋ 순서로 누른 뒤 뒤로가기를 하면 통계로 튀었고,
+   * 로그인 직후에는 about:blank 까지 갔다. 모바일에서 시트를 닫는 가장 흔한
+   * 동작이 스와이프 백이라, 사용자 눈에는 "적으려다 앱이 닫혔다"가 된다.
+   *
+   * 반대로 달·필터까지 push 하면 ‹ 를 여섯 번 누른 사람이 돌아오려고 뒤로가기를
+   * 여섯 번 눌러야 한다. 그쪽은 화면 안 컨트롤로 오가는 값이라 replace 가 맞다.
+   * 시트만 히스토리에 쌓는다 — 시트는 화면 위에 겹친 층이고, 층을 걷어내는 것이
+   * 뒤로가기의 원래 의미다.
+   */
+  function patchParams(patch: Record<string, string | null>, { push = false } = {}) {
     setParams(
       (prev) => {
         const p = new URLSearchParams(prev)
@@ -88,11 +106,11 @@ export default function Transactions() {
         }
         return p
       },
-      { replace: true },
+      { replace: !push },
     )
   }
 
-  const openNew = () => patchParams({ new: '1' })
+  const openNew = () => patchParams({ new: '1' }, { push: true })
 
   /**
    * 저장한 거래가 지금 보는 달에 없으면 그 달로 옮긴다.
@@ -107,6 +125,49 @@ export default function Transactions() {
   function closeAfterSave(key: 'new' | 'edit', occurredOn: string) {
     const saved = occurredOn.slice(0, 7)
     patchParams({ [key]: null, ...(saved === month ? {} : { month: saved }) })
+  }
+
+  /**
+   * 거래 삭제에 실행 취소를 붙인다.
+   *
+   * 카테고리 삭제는 스낵바로 되돌릴 수 있는데 거래는 확인창뿐이었다. 훨씬 자주
+   * 하는 동작인 쪽에만 안전망이 없었던 셈이다. 실수로 지운 뒤 남는 방법이
+   * "금액·날짜·메모를 기억해서 다시 입력" 이면 확인창 한 번으로는 부족하다.
+   *
+   * 되살리기는 카테고리와 달리 **새 행 INSERT** 다. 거래는 소프트 삭제가 아니라
+   * 완전 삭제이고(useTransactions.ts), 그 선택 자체는 옳다 — 지운 거래가 통계에
+   * 남으면 안 된다. 그래서 id 가 바뀐다. 사용자가 보는 값(카테고리·금액·날짜·메모)은
+   * 모두 같으므로 화면에서 구별되지 않지만, 그 거래를 가리키던 링크(?edit=id)는
+   * 죽는다. 링크를 들고 있을 사람이 방금 지운 본인뿐이라 그 대가를 받아들인다.
+   */
+  function deleteWithUndo(item: TransactionListItem) {
+    patchParams({ edit: null })
+    setSnack({
+      message: '거래를 삭제했습니다.',
+      actionLabel: '실행 취소',
+      onAction: () => {
+        recreate.mutate(
+          {
+            category_id: item.category_id,
+            type: item.type,
+            amount: item.amount,
+            occurred_on: item.occurred_on,
+            memo: item.memo,
+          },
+          {
+            // 시트가 이미 닫혔으므로 실패를 담을 곳이 스낵바뿐이다.
+            onError: () =>
+              setSnack({ message: '거래를 되살리지 못했습니다.', tone: 'error' }),
+            // 지운 거래가 다른 달이었으면 되살려도 지금 화면에 안 보인다.
+            // 저장 경로(closeAfterSave)와 같은 규칙으로 그 달로 옮긴다.
+            onSuccess: () => {
+              const restored = item.occurred_on.slice(0, 7)
+              if (restored !== month) patchParams({ month: restored })
+            },
+          },
+        )
+      },
+    })
   }
 
   // "예정" 배지의 기준. 자정을 넘기면 갱신된다 — 고정값이면 어제 거래에 배지가 남는다.
@@ -145,7 +206,7 @@ export default function Transactions() {
         }
       />
 
-      <SalaryWidget onRecordSalary={openNew} />
+      <SalaryWidget month={month} onRecordSalary={openNew} />
       <MonthSummary month={month} />
 
       {/* 사용자의 대부분은 "전체"로 본다. 필터 줄이 상시로 자리를 차지할 이유가 없다. */}
@@ -209,7 +270,7 @@ export default function Transactions() {
             items={items}
             upcoming={date > todayIso}
             categoryById={categoryById}
-            onSelect={(id) => patchParams({ edit: id })}
+            onSelect={(id) => patchParams({ edit: id }, { push: true })}
           />
         ))}
       </div>
@@ -242,8 +303,12 @@ export default function Transactions() {
           initial={editItem}
           onClose={() => patchParams({ edit: null })}
           onSaved={(iso) => closeAfterSave('edit', iso)}
+          onDeleted={deleteWithUndo}
         />
       )}
+      {/* FAB 위에 뜨도록 시트들과 같은 층에 둔다. */}
+      <Snackbar state={snack} onDismiss={() => setSnack(null)} />
+
       {editMissing && (
         <Sheet title="거래를 찾을 수 없습니다" onClose={() => patchParams({ edit: null })}>
           <p className="text-label text-ink-2">이미 삭제된 거래일 수 있습니다.</p>

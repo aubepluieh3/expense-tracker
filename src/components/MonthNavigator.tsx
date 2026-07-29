@@ -16,6 +16,7 @@ export function MonthNavigator({
   right?: React.ReactNode
 }) {
   const [picking, setPicking] = useState(false)
+  const away = month !== currentMonth()
 
   return (
     <>
@@ -25,15 +26,32 @@ export function MonthNavigator({
         탭을 옮길 때 라벨이 튄다.
       */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center">
-        <button
-          aria-label="이전 달"
-          onClick={() => onChange(shiftMonth(month, -1))}
-          className="size-9 justify-self-start rounded-control text-ink-muted hover:bg-surface-3"
-        >
-          ‹
-        </button>
+        <div className="flex items-center gap-1 justify-self-start">
+          <button
+            aria-label="이전 달"
+            onClick={() => onChange(shiftMonth(month, -1))}
+            className="size-9 rounded-control text-ink-muted hover:bg-surface-3"
+          >
+            ‹
+          </button>
+          {/*
+            다른 달을 보고 있을 때만 나타난다. 8월까지 넘긴 사람이 돌아오려면
+            ‹ 를 그만큼 되짚어야 했다 — 월 선택 시트에 이번 달이 강조돼 있지만
+            그건 라벨을 눌러야 열리고, 라벨이 버튼이라는 표시가 없다.
+            이번 달에 있을 때는 자리를 비운다: 늘 있으면 뜻 없는 버튼이 하나 는다.
+          */}
+          {away && (
+            <button
+              onClick={() => onChange(currentMonth())}
+              className="rounded-control bg-surface-3 px-2 py-1 text-caption text-ink-2 transition hover:bg-selected hover:text-ink"
+            >
+              이번 달
+            </button>
+          )}
+        </div>
         <button
           onClick={() => setPicking(true)}
+          aria-label={`${monthLabel(month)} — 다른 달 선택`}
           className="rounded-control px-3 py-1.5 text-body font-semibold text-ink hover:bg-surface-3"
         >
           {monthLabel(month)}

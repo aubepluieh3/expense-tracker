@@ -174,13 +174,14 @@ export default function Categories() {
   }
 
   return (
-    <Page title="카테고리 관리">
-      <p className="-mt-2 mb-4">
+    <Page
+      title="카테고리 관리"
+      back={
         <TextLink to="/settings" className="font-normal text-label text-ink-muted no-underline">
           ← 설정
         </TextLink>
-      </p>
-
+      }
+    >
       <div className="mb-4">
         <SegmentedControl label="수입·지출 구분" options={TYPE_OPTIONS} value={tab} onChange={setTab} />
       </div>
@@ -257,9 +258,18 @@ export default function Categories() {
           </p>
           <div className="mt-5 space-y-2">
             {actionError && <Callout tone="error">{actionError}</Callout>}
+            {/*
+              건수 조회 중에는 비활성이되 "처리 중…" 은 아니다.
+              둘을 loading 으로 합쳐 두었더니 시트를 연 순간 — 아직 아무것도
+              누르지 않았는데 — 주 버튼이 "처리 중…" 으로 떠 있었다. 삭제가
+              이미 시작된 것처럼 보이는 게 파괴적 동작 앞에서 제일 나쁜 오해다.
+              기다리는 이유는 아래 안내 문장(연결된 거래 N건)이 아직 안 나왔기
+              때문이고, 그건 문장 쪽이 이미 말하고 있다.
+            */}
             <Button
               variant="danger"
-              loading={remove.isPending || txCount.isPending}
+              loading={remove.isPending}
+              disabled={txCount.isPending}
               onClick={() => void confirmDelete(sheet.category)}
             >
               삭제

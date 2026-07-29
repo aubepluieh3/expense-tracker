@@ -189,6 +189,35 @@ export function useRestoreCategory() {
 type Profile = { id: string; nickname: string; salary_category_id: string | null }
 
 /**
+ * 닉네임 변경.
+ *
+ * 가입 때 필수로 받고 설정 화면에 표시까지 하는데 바꿀 길이 없었다. 오타를 냈거나
+ * 마음이 바뀌면 계정을 다시 만드는 것 말고 방법이 없었다는 뜻이다.
+ *
+ * 길이 검증은 가입과 같은 1~20자다. 상한은 DB 도 갖고 있지만(0001 의 CHECK),
+ * 잘라 보내지 않고 막는다 — 조용히 잘리면 사용자가 입력한 것과 저장된 것이
+ * 달라진다.
+ *
+ * 이 훅이 useCategories.ts 에 있는 것은 useProfile 이 여기 있기 때문이다.
+ * 파일 이름과 안 맞지만, profile 쿼리를 쓰는 코드가 흩어지는 것보다는 낫다.
+ */
+export function useUpdateNickname() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (nickname: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ nickname })
+        .eq('id', await currentUserId())
+      if (error) throw error
+    },
+    // 프로필만 낡는다. 카테고리·거래·통계는 닉네임과 무관하므로
+    // invalidateAfter('category') 를 부르면 필요 없는 재조회가 줄줄이 붙는다.
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.profile() }),
+  })
+}
+
+/**
  * 월급 위젯 기준 카테고리 지정. profiles 한 행 수정으로 끝난다.
  *
  * 낙관적으로 먼저 반영한다. 이 체크박스의 진실은 서버에 있어서, 서버 값만 보면
