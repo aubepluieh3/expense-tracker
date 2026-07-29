@@ -1,0 +1,40 @@
+name: CI
+
+# 서버 코드가 없고 브라우저가 RLS 걸린 DB 를 직접 호출하는 구조라, CI 가
+# 검증할 수 있는 것은 정적 검사와 빌드까지다. e2e(npm run test:e2e)는 개발
+# 서버와 전용 Supabase 계정이 필요해서 여기 넣지 않는다 — 넣으면 시크릿이
+# 없는 포크 PR 에서 항상 빨간불이 된다. 로컬에서 돌린다(e2e/README.md).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # 네 단계를 따로 둔다. `npm run verify` 한 줄로 묶으면 어디서 깨졌는지
+      # 로그를 열어야 알 수 있다.
+      - name: 포맷 확인
+        run: npm run format:check
+
+      - name: 린트
+        run: npm run lint
+
+      - name: 타입 검사
+        run: npm run typecheck
+
+      # 빌드는 타입 검사와 겹치지만(tsc -b && vite build) Vite 단계에서만
+      # 드러나는 실패가 있다 — 라우트 단위 코드 스플리팅의 동적 import 경로 오타.
+      - name: 빌드
+        run: npm run build
