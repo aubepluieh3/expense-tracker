@@ -1,0 +1,130 @@
+name: CI
+
+# 서버 코드가 없고 브라우저가 RLS 걸린 DB 를 직접 호출하는 구조라, CI 가
+# 검증할 수 있는 것은 정적 검사와 빌드까지다. e2e(npm run test:e2e)는 개발
+# 서버와 전용 Supabase 계정이 필요해서 여기 넣지 않는다 — 넣으면 시크릿이
+# 없는 포크 PR 에서 항상 빨간불이 된다. 로컬에서 돌린다(e2e/README.md).
+#
+# main 에 들어온 것은 verify 를 통과한 뒤 Cloudflare Pages 로 배포된다(아래 deploy).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # 네 단계를 따로 둔다. `npm run verify` 한 줄로 묶으면 어디서 깨졌는지
+      # 로그를 열어야 알 수 있다.
+      - name: 포맷 확인
+        run: npm run format:check
+
+      - name: 린트
+        run: npm run lint
+
+      - name: 타입 검사
+        run: npm run typecheck
+
+      # 순수 함수만 덮는다 (lib/month · lib/format · lib/rules · auth/password).
+      # 날짜 경계·금액 축약·DB 제약과 짝이 맞는 검증처럼, 오늘 날짜에 따라
+      # 우연히만 지나가는 것들을 고정하는 자리다.
+      - name: 단위 테스트
+        run: npm test
+
+      # 빌드는 타입 검사와 겹치지만(tsc -b && vite build) Vite 단계에서만
+      # 드러나는 실패가 있다 — 라우트 단위 코드 스플리팅의 동적 import 경로 오타.
+      - name: 빌드
+        run: npm run build
+
+  # 배포. 정적 호스팅으로 끝난다 — 올릴 것은 dist/ 뿐이다.
+  #
+  # verify 를 통과한 main 만 나간다. PR 에서는 돌지 않는다 — PR 마다 프로덕션에
+  # 올릴 이유가 없다.
+  #
+  # GitHub Pages 를 쓴다. 배포에 외부 자격 증명이 필요 없다는 것이 이유다 —
+  # 아래 permissions 로 이 실행에만 주어지는 OIDC 토큰으로 인증하므로, 계정
+  # 토큰을 만들어 시크릿에 넣는 단계가 사라진다. 대가는 하위 경로다
+  # (aubepluieh3.github.io/expense-tracker/) — vite.config.ts 의 BASE 참고.
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    # 기본값은 contents: read 뿐이다. Pages 배포에는 아래 둘이 더 필요하다.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    # 같은 시각에 두 배포가 겹치면 나중 것이 거부된다. 큐에 세운다 —
+    # 진행 중인 것을 취소하지 않는다(cancel-in-progress: false). 배포는
+    # 중간에 끊는 것보다 끝내는 게 안전하다.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # 시크릿이 비면 배포는 성공하지만 앱은 "설정이 필요합니다" 화면만 띄운다
+      # (lib/supabase.ts 의 isSupabaseConfigured). 조용히 망가진 것을 올리는 대신
+      # 여기서 멈춘다 — Vite 는 빌드 시점에 값을 끼워 넣으므로 나중에 고칠 수 없다.
+      - name: 시크릿 확인
+        run: |
+          missing=""
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
+            eval "value=\$$name"
+            if [ -z "$value" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::리포지터리 시크릿이 없다:$missing (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - run: npm ci
+
+      - uses: actions/configure-pages@v6
+
+      # anon key 는 공개돼도 되는 값이다 — 데이터 격리는 RLS 가 강제한다.
+      # 그래도 시크릿에 두는 이유는 프로젝트 주소를 레포에 박지 않기 위해서다.
+      - name: 빌드
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      # dist/404.html 이 있어야 새로고침과 메일 링크가 산다 (vite.config.ts 의
+      # spaFallback). 빌드가 조용히 안 만들면 배포는 성공하고 기능만 죽으므로
+      # 여기서 확인한다.
+      - name: SPA 폴백 확인
+        run: test -f dist/404.html || { echo "::error::dist/404.html 이 없다"; exit 1; }
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v5

@@ -32,10 +32,13 @@ export function useToday(): string {
       const now = new Date()
       const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
       // 1초 여유를 둔다. 자정 정각에 깨면 타이머 오차로 아직 어제일 수 있다.
-      timer = window.setTimeout(() => {
-        setValue(today())
-        schedule()
-      }, nextMidnight - now.getTime() + 1000)
+      timer = window.setTimeout(
+        () => {
+          setValue(today())
+          schedule()
+        },
+        nextMidnight - now.getTime() + 1000,
+      )
     }
 
     function sync() {

@@ -17,12 +17,11 @@ import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
-  useProfile,
   useRestoreCategory,
-  useSetSalaryCategory,
   useTransactionCount,
   useUpdateCategory,
 } from '@/hooks/useCategories'
+import { useProfile, useSetSalaryCategory } from '@/hooks/useProfile'
 
 /**
  * 열려 있는 시트는 항상 하나다.
@@ -183,7 +182,12 @@ export default function Categories() {
       }
     >
       <div className="mb-4">
-        <SegmentedControl label="수입·지출 구분" options={TYPE_OPTIONS} value={tab} onChange={setTab} />
+        <SegmentedControl
+          label="수입·지출 구분"
+          options={TYPE_OPTIONS}
+          value={tab}
+          onChange={setTab}
+        />
       </div>
 
       {categories.isPending && <ListSkeleton rows={5} />}
@@ -202,7 +206,9 @@ export default function Categories() {
               </span>
             )}
             {/* 이전에는 회색 글자라 누를 수 있는 것인지 알 수 없었다. */}
-            <SubtleButton onClick={() => setSheet({ kind: 'edit', category: c })}>수정</SubtleButton>
+            <SubtleButton onClick={() => setSheet({ kind: 'edit', category: c })}>
+              수정
+            </SubtleButton>
             <SubtleButton tone="danger" onClick={() => setSheet({ kind: 'delete', category: c })}>
               삭제
             </SubtleButton>
@@ -347,9 +353,7 @@ function SalaryToggle({ categoryId, current }: { categoryId: string; current: st
         />
         <span className="text-label text-ink">월급 위젯 기준으로 사용</span>
       </label>
-      {failed && (
-        <p className="mt-1.5 text-caption text-danger">월급 기준을 바꾸지 못했습니다.</p>
-      )}
+      {failed && <p className="mt-1.5 text-caption text-danger">월급 기준을 바꾸지 못했습니다.</p>}
     </div>
   )
 }

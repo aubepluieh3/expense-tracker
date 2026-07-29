@@ -46,10 +46,28 @@ function need(obj, key, file) {
   return v
 }
 
-export const SUPABASE_URL = need(app, 'VITE_SUPABASE_URL', '.env.local').replace(/\/rest\/v1\/?$/, '')
+export const SUPABASE_URL = need(app, 'VITE_SUPABASE_URL', '.env.local').replace(
+  /\/rest\/v1\/?$/,
+  '',
+)
 export const SUPABASE_ANON = need(app, 'VITE_SUPABASE_ANON_KEY', '.env.local')
 export const EMAIL = need(test, 'E2E_EMAIL', '.env.test.local')
 export const PASSWORD = need(test, 'E2E_PASSWORD', '.env.test.local')
+
+/**
+ * 두 번째 계정. 세션 전환 캐시 유출 검증에만 쓴다 — 한 계정으로는 "다른 사용자의
+ * 데이터가 보이는지"를 물을 수 없다.
+ *
+ * 없으면 null 이고 그 검증은 건너뛴다. 필수로 두면 계정 하나만 가진 사람이
+ * 나머지 69건도 못 돌린다.
+ *
+ * 이 계정은 **읽기 전용**으로만 다룬다 — reset 을 걸지 않고 아무것도 쓰지 않는다.
+ * 검증에 필요한 것은 "A 의 것이 보이는가" 뿐이라 B 를 건드릴 이유가 없다.
+ */
+export const SECOND =
+  test.E2E_EMAIL_2 && test.E2E_PASSWORD_2
+    ? { email: test.E2E_EMAIL_2, password: test.E2E_PASSWORD_2 }
+    : null
 
 /** 개발 서버 주소. vite.config.ts 가 strictPort 5173 으로 고정돼 있다. */
 export const APP = test.E2E_BASE_URL || 'http://localhost:5173'

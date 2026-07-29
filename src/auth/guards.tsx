@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useAuth } from '@/auth/AuthProvider'
+import { useAuth } from '@/auth/authContext'
 import { FullScreenSpinner } from '@/components/ui/FullScreenSpinner'
 
 /** 로그인이 필요한 경로 */

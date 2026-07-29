@@ -156,8 +156,7 @@ export default function Transactions() {
           },
           {
             // 시트가 이미 닫혔으므로 실패를 담을 곳이 스낵바뿐이다.
-            onError: () =>
-              setSnack({ message: '거래를 되살리지 못했습니다.', tone: 'error' }),
+            onError: () => setSnack({ message: '거래를 되살리지 못했습니다.', tone: 'error' }),
             // 지운 거래가 다른 달이었으면 되살려도 지금 화면에 안 보인다.
             // 저장 경로(closeAfterSave)와 같은 규칙으로 그 달로 옮긴다.
             onSuccess: () => {

@@ -5,9 +5,9 @@ import { TextLink } from '@/components/ui/TextLink'
 import { Callout } from '@/components/ui/Callout'
 import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
-import { mailSendFailure } from '@/auth/authErrors'
-
-const MIN_PASSWORD = 8
+import { authFailureMessage, mailSendFailure } from '@/auth/authErrors'
+import { MIN_PASSWORD, passwordError } from '@/auth/password'
+import { MAX_NICKNAME, nicknameError, normalizeSpaces } from '@/lib/rules'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -23,13 +23,15 @@ export default function Signup() {
     e.preventDefault()
     setError('')
 
-    const trimmedNickname = nickname.trim()
-    if (password.length < MIN_PASSWORD) {
-      setError(`비밀번호는 ${MIN_PASSWORD}자 이상이어야 합니다`)
+    const trimmedNickname = normalizeSpaces(nickname)
+    const invalidPassword = passwordError(password)
+    if (invalidPassword) {
+      setError(invalidPassword)
       return
     }
-    if (trimmedNickname.length < 1 || trimmedNickname.length > 20) {
-      setError('닉네임은 1~20자로 입력해 주세요')
+    const invalidNickname = nicknameError(trimmedNickname)
+    if (invalidNickname) {
+      setError(invalidNickname)
       return
     }
 
@@ -45,7 +47,10 @@ export default function Signup() {
     setBusy(false)
 
     if (error) {
-      setError(error.message)
+      // 이전에는 error.message 를 그대로 올려서 영문 문장이 떴다.
+      // 계정 존재 여부를 드러내는 코드는 authFailureMessage 가 매핑하지 않으므로
+      // 이 fallback 으로 떨어지고, 열거는 열리지 않는다.
+      setError(authFailureMessage(error, '가입하지 못했습니다. 잠시 후 다시 시도해 주세요.'))
       return
     }
     // 이미 가입된 이메일이어도 Supabase 는 성공처럼 응답한다(계정 열거 방지).
@@ -111,10 +116,7 @@ export default function Signup() {
       title="회원가입"
       footer={
         <span className="text-ink-2">
-          이미 계정이 있으신가요?{' '}
-          <TextLink to="/login">
-            로그인
-          </TextLink>
+          이미 계정이 있으신가요? <TextLink to="/login">로그인</TextLink>
         </span>
       }
     >
@@ -141,7 +143,7 @@ export default function Signup() {
         <TextField
           label="닉네임"
           required
-          maxLength={20}
+          maxLength={MAX_NICKNAME}
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
         />

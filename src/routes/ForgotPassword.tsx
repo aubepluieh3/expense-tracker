@@ -43,11 +43,7 @@ export default function ForgotPassword() {
       <AuthLayout
         title="메일을 확인해 주세요"
         description={`해당 계정이 있다면 ${email} 로 재설정 링크를 보냈습니다.`}
-        footer={
-          <TextLink to="/login">
-            로그인 화면으로
-          </TextLink>
-        }
+        footer={<TextLink to="/login">로그인 화면으로</TextLink>}
       >
         <></>
       </AuthLayout>
@@ -58,9 +54,7 @@ export default function ForgotPassword() {
     <AuthLayout
       title="비밀번호 재설정"
       description="가입할 때 쓴 이메일로 재설정 링크를 보내드립니다."
-      footer={
-        <TextLink to="/login">로그인 화면으로</TextLink>
-      }
+      footer={<TextLink to="/login">로그인 화면으로</TextLink>}
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <TextField

@@ -33,9 +33,15 @@ export function Button({
 }: Props) {
   return (
     <button
+      // {...rest} 가 먼저다. 아래 disabled 를 덮지 못하게 해야 한다 —
+      // 순서가 반대였을 때, disabled 를 명시적으로 넘긴 호출부에서는 rest.disabled 가
+      // loading 계산을 덮어써서 처리 중에도 버튼이 눌렸다. 실제 피해 지점은
+      // 카테고리 삭제 버튼(routes/Categories.tsx)이었다 — 건수 조회 때문에
+      // disabled 를 함께 넘기는 유일한 곳이 하필 파괴적 동작이라, 연타하면
+      // 삭제 요청이 중복 발사됐다.
+      {...rest}
       className={`rounded-control text-label font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT[variant]} ${SIZE[size]} ${className}`}
       disabled={loading || rest.disabled}
-      {...rest}
     >
       {loading ? '처리 중…' : children}
     </button>

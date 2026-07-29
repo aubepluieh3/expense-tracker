@@ -152,7 +152,11 @@ await d().getByPlaceholder('0').fill('13000')
 await page.getByRole('button', { name: '저장' }).click()
 await d().waitFor({ state: 'detached', timeout: 20000 })
 console.log('   금액 수정: 탭 3회 (행 → 금액 → 저장)')
-note('좋음', '수정', '목록에서 행을 바로 누르면 값이 채워진 시트가 열린다. 금액만 고쳐 저장하면 끝이라 3탭이다.')
+note(
+  '좋음',
+  '수정',
+  '목록에서 행을 바로 누르면 값이 채워진 시트가 열린다. 금액만 고쳐 저장하면 끝이라 3탭이다.',
+)
 
 console.log('\n── 필터')
 await page.getByRole('button', { name: '필터', exact: true }).click()
@@ -160,7 +164,11 @@ const opts = await page.locator('select option').allInnerTexts()
 await page.locator('select').selectOption({ label: opts.find((o) => o.includes('식비')) })
 await page.waitForTimeout(700)
 await page.screenshot({ path: join(SHOTS, 'ux-04-filter.png') })
-const chipText = await page.locator('span').filter({ hasText: /식비 · \d+건/ }).first().innerText()
+const chipText = await page
+  .locator('span')
+  .filter({ hasText: /식비 · \d+건/ })
+  .first()
+  .innerText()
 console.log(`   ${chipText}`)
 note(
   '불편',
@@ -178,14 +186,22 @@ await page.screenshot({ path: join(SHOTS, 'ux-05-stats.png') })
 const statsText = await page.locator('section').first().innerText()
 console.log('   ' + statsText.split('\n').filter(Boolean).slice(0, 5).join(' | '))
 if (!statsText.includes('지난달 대비')) {
-  note('관찰', '통계', '첫 달은 전월 데이터가 없어 증감이 안 나온다. 의도한 동작이지만 첫 달 사용자에게는 화면이 다소 심심하다.')
+  note(
+    '관찰',
+    '통계',
+    '첫 달은 전월 데이터가 없어 증감이 안 나온다. 의도한 동작이지만 첫 달 사용자에게는 화면이 다소 심심하다.',
+  )
 }
 
 await page.getByRole('button', { name: /식비/ }).first().click()
 await page.waitForURL((u) => new URL(u).searchParams.has('category'), { timeout: 20000 })
 await page.waitForTimeout(800)
 await page.screenshot({ path: join(SHOTS, 'ux-06-drilldown.png') })
-note('좋음', '통계 → 내역', '막대를 누르면 그 카테고리만 걸린 내역으로 넘어간다. "식비가 왜 많지?" 에서 "뭘 샀길래" 로 한 탭이다.')
+note(
+  '좋음',
+  '통계 → 내역',
+  '막대를 누르면 그 카테고리만 걸린 내역으로 넘어간다. "식비가 왜 많지?" 에서 "뭘 샀길래" 로 한 탭이다.',
+)
 
 console.log('\n── 월급 위젯')
 await page.getByRole('link', { name: /내역/ }).click()
@@ -193,7 +209,11 @@ await page.waitForSelector('text=월급 남은 돈', { timeout: 20000 })
 await page.waitForTimeout(500)
 const widget = await page.locator('section').first().innerText()
 console.log('   ' + widget.split('\n').filter(Boolean).slice(0, 5).join(' | '))
-note('좋음', '월급 위젯', '급여를 넣자마자 남은 금액·진행 바·다음 급여까지 남은 일수가 한 덩어리로 나온다.')
+note(
+  '좋음',
+  '월급 위젯',
+  '급여를 넣자마자 남은 금액·진행 바·다음 급여까지 남은 일수가 한 덩어리로 나온다.',
+)
 await page.screenshot({ path: join(SHOTS, 'ux-07-final.png') })
 
 /* ── "최근" 줄이 실제로 값을 하는 경우: 더보기 뒤로 밀린 카테고리 ────────── */

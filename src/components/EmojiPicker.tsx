@@ -50,9 +50,7 @@ export function EmojiPicker({
                   onClick={() => onChange(emoji)}
                   aria-pressed={value === emoji}
                   className={`rounded-control py-1.5 text-xl transition ${
-                    value === emoji
-                      ? 'bg-selected ring-2 ring-ink'
-                      : 'hover:bg-surface-3'
+                    value === emoji ? 'bg-selected ring-2 ring-ink' : 'hover:bg-surface-3'
                   }`}
                 >
                   {emoji}
