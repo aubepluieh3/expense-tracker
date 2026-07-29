@@ -9,6 +9,7 @@ import { FilterChip, FilterPanel, FilterToggleButton } from '@/components/Transa
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/Button'
 import { Screen } from '@/components/ui/Screen'
+import { Sheet } from '@/components/ui/Sheet'
 import { PlusIcon } from '@/components/ui/icons'
 import { useMonthParam } from '@/hooks/useMonthParam'
 import { useAllCategories } from '@/hooks/useCategories'
@@ -17,7 +18,8 @@ import {
   useTransaction,
   type TransactionListItem,
 } from '@/hooks/useTransactions'
-import { today } from '@/lib/month'
+import { useToday } from '@/hooks/useToday'
+import { currentMonth, monthLabel } from '@/lib/month'
 import type { Category, CategoryType } from '@/types/database'
 
 /** tx.data 가 없을 때마다 새 [] 를 만들면 아래 useMemo 들의 deps 가 매번 바뀐다. */
@@ -62,9 +64,17 @@ export default function Transactions() {
     [all, typeFilter, categoryFilter],
   )
 
+  /**
+   * 날짜별로 묶는다. visible 이 이미 날짜 내림차순이라 Map 의 삽입 순서가 곧 표시 순서다.
+   * 하루치 배열을 매번 새로 만들지 않고 push 한다 — 스프레드는 그날 건수의 제곱이 된다.
+   */
   const groups = useMemo(() => {
     const map = new Map<string, TransactionListItem[]>()
-    for (const t of visible) map.set(t.occurred_on, [...(map.get(t.occurred_on) ?? []), t])
+    for (const t of visible) {
+      const day = map.get(t.occurred_on)
+      if (day) day.push(t)
+      else map.set(t.occurred_on, [t])
+    }
     return [...map.entries()]
   }, [visible])
 
@@ -84,13 +94,34 @@ export default function Transactions() {
 
   const openNew = () => patchParams({ new: '1' })
 
-  const todayIso = today()
+  /**
+   * 저장한 거래가 지금 보는 달에 없으면 그 달로 옮긴다.
+   *
+   * 옮기지 않으면 이런 일이 생긴다 — 6월을 보는 중에 ＋ 를 누르면 날짜 기본값은
+   * 오늘(7월)이다. 저장은 성공하지만 6월 목록에는 없으니 화면에 "아직 기록이
+   * 없어요"가 그대로 떠서, 저장이 실패한 것처럼 보인다.
+   *
+   * 시트를 닫는 것과 달을 옮기는 것을 한 번에 patch 한다. 두 번 나누면 같은
+   * 틱에서 URL 을 두 번 갱신해 하나가 덮일 수 있다.
+   */
+  function closeAfterSave(key: 'new' | 'edit', occurredOn: string) {
+    const saved = occurredOn.slice(0, 7)
+    patchParams({ [key]: null, ...(saved === month ? {} : { month: saved }) })
+  }
+
+  // "예정" 배지의 기준. 자정을 넘기면 갱신된다 — 고정값이면 어제 거래에 배지가 남는다.
+  const todayIso = useToday()
   const filterActive = !!typeFilter || !!categoryFilter
 
   // 다른 달의 거래를 링크로 열었을 때만 따로 조회한다.
   const inList = all.find((t) => t.id === editId)
   const fetched = useTransaction(editId && !inList ? editId : null)
   const editItem = inList ?? fetched.data
+  /**
+   * 없는 id 로 들어온 경우(지워진 거래의 링크 등). 이전에는 시트가 열리지 않고
+   * URL 에 edit= 만 남아서, 링크가 죽었는지 앱이 멈췄는지 알 수 없었다.
+   */
+  const editMissing = !!editId && !editItem && fetched.isError
 
   return (
     <Screen>
@@ -147,18 +178,25 @@ export default function Transactions() {
         {tx.isPending && <ListSkeleton />}
         {tx.isError && <ErrorState onRetry={() => void tx.refetch()} />}
 
-        {tx.isSuccess && all.length === 0 && (
-          <EmptyState
-            icon="📝"
-            title="아직 기록이 없어요"
-            description="첫 지출을 기록해 볼까요?"
-            action={
-              <Button size="inline" onClick={openNew}>
-                기록 시작하기
-              </Button>
-            }
-          />
-        )}
+        {/* 빈 이유가 셋이다 — 아직 아무것도 안 넣음 / 이 달만 비어 있음 / 필터에 안 걸림.
+            처음에는 앞의 둘을 구분하지 않아서, 7월에 거래가 쌓인 사용자가 6월로 넘어가면
+            "아직 기록이 없어요 · 첫 지출을 기록해 볼까요?" 라는 첫 사용자 문구를 봤다. */}
+        {tx.isSuccess &&
+          all.length === 0 &&
+          (month === currentMonth() ? (
+            <EmptyState
+              icon="📝"
+              title="아직 기록이 없어요"
+              description="첫 지출을 기록해 볼까요?"
+              action={
+                <Button size="inline" onClick={openNew}>
+                  기록 시작하기
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon="📭" title={`${monthLabel(month)}에는 기록이 없어요`} />
+          ))}
 
         {tx.isSuccess && all.length > 0 && visible.length === 0 && (
           <EmptyState icon="🔍" title="조건에 맞는 거래가 없습니다" />
@@ -193,9 +231,28 @@ export default function Transactions() {
         </div>
       </div>
 
-      {isNew && <TransactionFormSheet onClose={() => patchParams({ new: null })} />}
+      {isNew && (
+        <TransactionFormSheet
+          onClose={() => patchParams({ new: null })}
+          onSaved={(iso) => closeAfterSave('new', iso)}
+        />
+      )}
       {editId && editItem && (
-        <TransactionFormSheet initial={editItem} onClose={() => patchParams({ edit: null })} />
+        <TransactionFormSheet
+          initial={editItem}
+          onClose={() => patchParams({ edit: null })}
+          onSaved={(iso) => closeAfterSave('edit', iso)}
+        />
+      )}
+      {editMissing && (
+        <Sheet title="거래를 찾을 수 없습니다" onClose={() => patchParams({ edit: null })}>
+          <p className="text-label text-ink-2">이미 삭제된 거래일 수 있습니다.</p>
+          <div className="mt-5">
+            <Button variant="ghost" onClick={() => patchParams({ edit: null })}>
+              닫기
+            </Button>
+          </div>
+        </Sheet>
       )}
     </Screen>
   )

@@ -29,12 +29,30 @@ let consoleErrors = []
 let currentPage = null
 let shotSeq = 0
 
+/**
+ * 오늘 날짜 때문에 성립하지 않는 검증을 "건너뜀"으로 남긴다.
+ *
+ * 통과로 위장하면 조용히 커버리지가 사라지고, 실패로 두면 버그가 아닌데
+ * 빨간불이 뜬다 — 예정 배지 검증은 오늘이 말일이면 이 달 안에 미래 날짜가
+ * 없어서 매달 한 번 실패했다. 셋째 상태가 필요하다.
+ */
+const SKIP = Symbol('skip')
+function skip(why) {
+  const e = new Error(why)
+  e[SKIP] = true
+  throw e
+}
+
 async function check(area, name, fn) {
   const t0 = Date.now()
   try {
     await fn()
     results.push({ round, area, name, ok: true, ms: Date.now() - t0 })
   } catch (e) {
+    if (e?.[SKIP]) {
+      results.push({ round, area, name, ok: true, skipped: true, why: e.message, ms: Date.now() - t0 })
+      return
+    }
     let shot = null
     if (currentPage && !currentPage.isClosed()) {
       shot = join(SHOTS, `fail-R${round}-${String(++shotSeq).padStart(2, '0')}.png`)
@@ -68,6 +86,22 @@ async function check(area, name, fn) {
 
 const expect = (cond, msg) => {
   if (!cond) throw new Error(msg)
+}
+
+/**
+ * 조건이 참이 될 때까지 폴링한다.
+ *
+ * Playwright 의 자동 대기는 locator 에만 붙는다. "제어 입력이 React 커밋 뒤에
+ * 반영되는지" 처럼 값을 읽어 비교하는 단정에는 안 걸려서, 클릭 직후 바로 읽으면
+ * 한 프레임 차이로 실패한다 — 실제로 급여 체크박스에서 3/3 으로 그랬다.
+ */
+async function waitUntil(fn, msg, timeout = 5000) {
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeout) {
+    if (await fn()) return
+    await new Promise((s) => setTimeout(s, 50))
+  }
+  throw new Error(`${msg} (${timeout}ms 대기)`)
 }
 
 /* ─────────────────────────────────────────────────────────────────── 실행 */
@@ -264,6 +298,20 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.getByText('금액을 입력해 주세요').waitFor({ timeout: 10000 })
   })
 
+  /**
+   * transactions.amount 는 integer(int4) 라서 상한이 2,147,483,647 이다.
+   * 입력을 10자리까지 허용하면 그 위를 칠 수 있고, 클라이언트 검증(> 0)은
+   * 통과한 뒤 INSERT 가 22003 으로 터진다 —
+   * `value "3000000000" is out of range for type integer` 가 그대로 화면에 떴다.
+   * 9자리로 끊어 애초에 입력 불가능하게 만든 것을 지킨다.
+   */
+  await check('등록', '금액은 9자리까지 — int4 상한을 넘길 수 없다', async () => {
+    await dlg().getByPlaceholder('0').fill('99999999999999')
+    const v = (await dlg().getByPlaceholder('0').inputValue()).replace(/,/g, '')
+    expect(v.length === 9, `9자리여야 하는데 ${v.length}자리(${v})`)
+    expect(Number(v) < 2_147_483_647, `int4 상한을 넘는다: ${v}`)
+  })
+
   await check('등록', '천단위 콤마 · 어제 버튼 · 메모', async () => {
     await dlg().getByPlaceholder('0').fill('12000')
     expect(
@@ -390,6 +438,20 @@ for (round = 1; round <= ROUNDS; round++) {
   })
 
   /* ── 5. 월 이동 ───────────────────────────────────────────────────── */
+  await check('월 이동', '빈 지난달 — 첫 사용자 문구가 아니라 그 달 이름을 쓴다', async () => {
+    await page.getByRole('button', { name: '이전 달' }).click()
+    await page.waitForTimeout(700)
+    const label = await page.getByRole('button', { name: /\d{4}년 \d+월/ }).innerText()
+    await page.getByText(`${label}에는 기록이 없어요`).waitFor({ timeout: 15000 })
+    // 여긴 첫 지출이 아니다 — 이 사용자는 이번 달에 이미 넣어 봤다
+    expect(
+      (await page.getByText('첫 지출을 기록해 볼까요?').count()) === 0,
+      '지난달인데 첫 사용자 문구가 뜬다',
+    )
+    await page.getByRole('button', { name: '다음 달' }).click()
+    await page.waitForTimeout(600)
+  })
+
   await check('월 이동', '‹ › 버튼', async () => {
     const label = page.getByRole('button', { name: /\d{4}년 \d+월/ })
     const before = await label.innerText()
@@ -415,6 +477,42 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.waitForTimeout(600)
     const m = new URL(page.url()).searchParams.get('month')
     expect(!m || !m.endsWith('-03'), '뒤로가기가 월 이동을 되돌리지 못함')
+  })
+
+  /**
+   * 지난달을 보는 중에 저장하면 날짜 기본값은 오늘(이번 달)이다. 저장한 달로
+   * 옮기지 않으면 목록이 그대로 비어 있어 저장이 실패한 것처럼 보인다 —
+   * 실제로 "아직 기록이 없어요"가 떠 있었다.
+   */
+  await check('월 이동', '다른 달로 저장 → 그 달로 이동하고 거래가 보인다', async () => {
+    await page.goto(`${APP}/`, { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: '이전 달' }).waitFor({ timeout: 20000 })
+    await page.getByRole('button', { name: '이전 달' }).click()
+    await page.waitForTimeout(600)
+    const viewed = new URL(page.url()).searchParams.get('month')
+
+    await page.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first().click()
+    await dlg().waitFor({ timeout: 15000 })
+    const sheetDate = await dlg().locator('input[type="date"]').inputValue()
+    expect(!sheetDate.startsWith(viewed), `이 검증은 시트 날짜가 다른 달일 때만 성립: ${sheetDate}`)
+    await chip(/^교통/).click()
+    await dlg().getByPlaceholder('0').fill('1234')
+    await dlg().getByPlaceholder('선택').fill('다른달 저장')
+    await page.getByRole('button', { name: '저장' }).click()
+    await dlg().waitFor({ state: 'detached', timeout: 20000 })
+
+    await page.getByText('다른달 저장').waitFor({ timeout: 15000 })
+    expect(
+      new URL(page.url()).searchParams.get('month') === sheetDate.slice(0, 7),
+      `저장한 달로 안 옮겨졌다: url=${new URL(page.url()).searchParams.get('month')} 저장=${sheetDate.slice(0, 7)}`,
+    )
+
+    // 뒷 검증에 영향 없게 지운다
+    await page.getByRole('button', { name: /다른달 저장/ }).click()
+    await dlg().waitFor({ timeout: 15000 })
+    await dlg().getByRole('button', { name: '거래 삭제' }).click()
+    await dlg().getByRole('button', { name: '삭제' }).click()
+    await dlg().waitFor({ state: 'detached', timeout: 20000 })
   })
 
   /* ── 6. 데이터 넣고 위젯 · 필터 · 통계 ────────────────────────────── */
@@ -455,7 +553,7 @@ for (round = 1; round <= ROUNDS; round++) {
   const hasFutureDay = iso(futureInMonth) !== iso(today)
 
   await check('위젯', '미래 지출 → 예정 배지 + 위젯의 예정 표시', async () => {
-    if (!hasFutureDay) throw new Error('오늘이 이 달 마지막 날 — 이 달 안에 미래 날짜가 없다')
+    if (!hasFutureDay) skip('오늘이 이 달 마지막 날 — 이 달 안에 미래 날짜가 없다')
     const future = futureInMonth
     await page.getByRole('button', { name: '거래 추가' }).click()
     await dlg().waitFor({ timeout: 15000 })
@@ -620,7 +718,14 @@ for (round = 1; round <= ROUNDS; round++) {
     await row.waitFor({ timeout: 15000 })
     await row.getByRole('button', { name: '수정' }).click()
     await dlg().waitFor({ timeout: 15000 })
-    await dlg().getByRole('checkbox').check()
+    /**
+     * .check() 를 쓰지 않는다. 그것은 클릭 직후 DOM 의 checked 를 즉시 단정하는데,
+     * 이 체크박스는 제어 입력이라 React 렌더 한 프레임 뒤에 반영된다.
+     * 확인해야 할 것은 중간 DOM 상태가 아니라 아래의 "월급 기준" 배지다.
+     */
+    const box = dlg().getByRole('checkbox')
+    if (!(await box.isChecked())) await box.click()
+    await waitUntil(() => box.isChecked(), '체크박스가 켜지지 않았다')
     await dlg().getByRole('button', { name: '저장' }).click()
     await dlg().waitFor({ state: 'detached', timeout: 20000 })
     const badgeRow = page.locator('li', { hasText: '용돈' }).first()
@@ -714,17 +819,25 @@ for (const area of areas) {
   for (const name of names) {
     const per = [1, 2, 3].slice(0, ROUNDS).map((rd) => {
       const hit = rows.find((r) => r.round === rd && r.name === name)
-      return hit ? (hit.ok ? '✓' : '✕') : '·'
+      if (!hit) return '·'
+      return hit.skipped ? '⊘' : hit.ok ? '✓' : '✕'
     })
     const failed = rows.find((r) => r.name === name && !r.ok)
-    console.log(`   ${per.join(' ')}  ${name}${failed ? `\n         → ${failed.err}` : ''}`)
+    const skipped = rows.find((r) => r.name === name && r.skipped)
+    const tail = failed ? `\n         → ${failed.err}` : skipped ? `\n         ⊘ ${skipped.why}` : ''
+    console.log(`   ${per.join(' ')}  ${name}${tail}`)
   }
   console.log()
 }
 
 const total = results.length
 const failed = results.filter((r) => !r.ok)
-console.log(`검증 ${total}건 (${ROUNDS}회 × ${total / ROUNDS}) · 통과 ${total - failed.length} · 실패 ${failed.length}`)
+const skippedRows = results.filter((r) => r.skipped)
+console.log(
+  `검증 ${total}건 (${ROUNDS}회 × ${total / ROUNDS}) · 통과 ${total - failed.length - skippedRows.length}` +
+    ` · 실패 ${failed.length}` +
+    (skippedRows.length ? ` · 건너뜀 ${skippedRows.length}` : ''),
+)
 if (failed.length) {
   console.log('\n실패 목록:')
   for (const f of failed) console.log(`  R${f.round} [${f.area}] ${f.name}\n      ${f.err}`)

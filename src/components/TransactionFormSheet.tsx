@@ -11,6 +11,7 @@ import {
   useUpdateTransaction,
   type TransactionListItem,
 } from '@/hooks/useTransactions'
+import { useToday } from '@/hooks/useToday'
 import { digitsOnly, formatAmount } from '@/lib/format'
 import { addDays, relativeDayLabel, today } from '@/lib/month'
 import type { CategoryType } from '@/types/database'
@@ -32,6 +33,17 @@ import type { CategoryType } from '@/types/database'
 let carriedDate: string | null = null
 
 /**
+ * 금액 상한. transactions.amount 가 integer(int4) 라서 하드 상한이
+ * 2,147,483,647 이다. 이전에는 입력을 10자리까지 허용해서 그 위를 칠 수 있었고,
+ * 클라이언트 검증(> 0)은 통과한 뒤 INSERT 가 22003 으로 터졌다 —
+ * `value "3000000000" is out of range for type integer` 가 그대로 화면에 떴다.
+ *
+ * 9자리로 끊는다. 개인 가계부의 한 건이 10억을 넘을 일은 없고,
+ * 자리수로 막으면 상한 초과가 애초에 입력 불가능한 상태가 된다.
+ */
+const AMOUNT_DIGITS = 9
+
+/**
  * 가계부가 버려지는 1위 원인은 기능 부족이 아니라 입력 귀찮음이다.
  * 그래서 이 화면의 설계 목표는 "탭 수 최소화"다.
  *
@@ -43,9 +55,15 @@ let carriedDate: string | null = null
 export function TransactionFormSheet({
   initial,
   onClose,
+  onSaved,
 }: {
   initial?: TransactionListItem
   onClose: () => void
+  /**
+   * 저장 성공 시 닫기 대신 이걸 부른다. 저장된 날짜를 넘기는 이유는 호출부가
+   * "지금 보는 달에 없는 거래를 저장했는가"를 판단해야 하기 때문이다.
+   */
+  onSaved?: (occurredOn: string) => void
 }) {
   const isEdit = !!initial
 
@@ -63,6 +81,12 @@ export function TransactionFormSheet({
   const [error, setError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [confirmingClose, setConfirmingClose] = useState(false)
+
+  /**
+   * 자정을 넘겨도 "어제"·"오늘" 버튼과 경고 줄이 같은 날을 가리키게 한다.
+   * occurredOn 의 초기값은 열었을 때의 오늘로 남는다 — 사용자가 그걸 보고 열었다.
+   */
+  const todayIso = useToday()
 
   const active = useCategories()
   const all = useAllCategories()
@@ -139,10 +163,32 @@ export function TransactionFormSheet({
         await create.mutateAsync(payload)
         carriedDate = occurredOn
       }
-      onClose()
+      if (onSaved) onSaved(occurredOn)
+      else onClose()
     } catch (e) {
-      setError((e as Error).message)
+      /**
+       * 원시 Postgres 메시지를 화면에 올리지 않는다. 사용자가 할 수 있는 일이
+       * 없는 문장이고("violates check constraint …"), 이 앱의 다른 에러는 전부
+       * 한국어 한 줄이다. 진단 정보는 콘솔로 보낸다.
+       */
+      console.error('거래 저장 실패', e)
+      setError('저장하지 못했습니다. 잠시 후 다시 시도해 주세요.')
     }
+  }
+
+  /** id 를 인자로 받는다 — isEdit 분기 안에서만 불리지만 ! 로 타입을 우회하지 않는다. */
+  async function confirmDelete(id: string) {
+    setError('')
+    try {
+      await remove.mutateAsync(id)
+    } catch (e) {
+      // 이전에는 catch 가 없어서, 확인까지 누른 삭제가 실패하면 시트가 그대로
+      // 남고 아무 메시지도 없었다.
+      console.error('거래 삭제 실패', e)
+      setError('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+      return
+    }
+    onClose()
   }
 
   const busy = create.isPending || update.isPending
@@ -152,7 +198,7 @@ export function TransactionFormSheet({
    * 수정 시트에서는 띄우지 않는다. 거기 날짜는 기록에서 온 값이라 조용히 틀릴
    * 위험이 없고, 오늘 것이 아닌 거래를 열 때마다 배너가 떠서 소음이 된다.
    */
-  const dateNotice = isEdit ? null : relativeDayLabel(occurredOn)
+  const dateNotice = isEdit ? null : relativeDayLabel(occurredOn, todayIso)
 
   return (
     <Sheet
@@ -212,7 +258,7 @@ export function TransactionFormSheet({
                 inputMode="numeric"
                 placeholder="0"
                 value={amount ? formatAmount(Number(amount)) : ''}
-                onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, 10))}
+                onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, AMOUNT_DIGITS))}
                 className="w-full bg-transparent text-right text-xl font-semibold text-ink outline-none placeholder:text-ink-muted"
               />
               <span className="text-label text-ink-muted">원</span>
@@ -224,8 +270,8 @@ export function TransactionFormSheet({
               <span className="w-10 shrink-0 text-label text-ink-muted">날짜</span>
               <div className="flex flex-1 items-center justify-end gap-1.5">
                 {/* 실제 입력의 대부분이 어제/오늘이다. 달력은 예외 경로. */}
-                <QuickDate label="어제" value={addDays(today(), -1)} current={occurredOn} onPick={setOccurredOn} />
-                <QuickDate label="오늘" value={today()} current={occurredOn} onPick={setOccurredOn} />
+                <QuickDate label="어제" value={addDays(todayIso, -1)} current={occurredOn} onPick={setOccurredOn} />
+                <QuickDate label="오늘" value={todayIso} current={occurredOn} onPick={setOccurredOn} />
                 <input
                   type="date"
                   value={occurredOn}
@@ -279,10 +325,7 @@ export function TransactionFormSheet({
                   variant="danger"
                   size="inline"
                   loading={remove.isPending}
-                  onClick={async () => {
-                    await remove.mutateAsync(initial.id)
-                    onClose()
-                  }}
+                  onClick={() => void confirmDelete(initial.id)}
                 >
                   삭제
                 </Button>

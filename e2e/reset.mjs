@@ -34,6 +34,21 @@ export async function reset({ quiet = false } = {}) {
     method: 'POST',
     body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
   })
+  /**
+   * 응답을 확인하지 않으면 아래에서 "Cannot read properties of undefined (reading 'id')"
+   * 가 터진다. 실제로 비밀번호가 틀렸을 때 그 메시지 때문에 원인을 한참 못 찾았다 —
+   * 로그인 실패인지 코드 버그인지 구분할 수 없었다.
+   */
+  if (s.status !== 200 || !s.body?.access_token) {
+    const code = s.body?.error_code ?? s.body?.error ?? s.status
+    const hint =
+      code === 'invalid_credentials'
+        ? '.env.test.local 의 E2E_EMAIL / E2E_PASSWORD 를 확인하세요.'
+        : code === 429 || code === 'over_request_rate_limit'
+          ? 'Supabase 인증 레이트리밋입니다. 몇 분 뒤 다시 시도하세요.'
+          : (s.body?.msg ?? '')
+    throw new Error(`테스트 계정 로그인 실패 (${code}) — ${hint}`)
+  }
   token = s.body.access_token
   const uid = s.body.user.id
 
@@ -70,6 +85,8 @@ export async function reset({ quiet = false } = {}) {
   return { categories: after.body.length }
 }
 
-if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
+// 직접 실행했을 때만 돈다. process.argv[1] 검사가 없으면 `node -e` 로
+// import 할 때 "Cannot read properties of undefined (reading 'replace')" 가 터진다.
+if (process.argv[1] && import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
   await reset()
 }

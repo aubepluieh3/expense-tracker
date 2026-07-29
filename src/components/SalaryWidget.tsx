@@ -1,8 +1,9 @@
 import { TextLink } from '@/components/ui/TextLink'
 import { useCategories, useProfile } from '@/hooks/useCategories'
 import { useSalaryWidget } from '@/hooks/useSummary'
+import { useToday } from '@/hooks/useToday'
 import { abbrevAmount, formatAmount } from '@/lib/format'
-import { daysBetween, shortDate, today } from '@/lib/month'
+import { daysBetween, shortDate } from '@/lib/month'
 
 /**
  * "이번 월급 얼마 남았지?" 에 직접 답하는 위젯 (기획서 §3.6).
@@ -17,6 +18,8 @@ export function SalaryWidget({ onRecordSalary }: { onRecordSalary?: () => void }
   const { data, isPending, isError } = useSalaryWidget()
   const profile = useProfile()
   const categories = useCategories()
+  // 아래 이른 반환들보다 위에서 부른다 — 훅은 조건 뒤에 올 수 없다.
+  const todayIso = useToday()
 
   if (isPending) {
     return (
@@ -70,9 +73,8 @@ export function SalaryWidget({ onRecordSalary }: { onRecordSalary?: () => void }
     )
   }
 
-  const now = today()
-  const sinceSalary = daysBetween(data.salary_date, now)
-  const untilNext = daysBetween(now, data.next_salary_date)
+  const sinceSalary = daysBetween(data.salary_date, todayIso)
+  const untilNext = daysBetween(todayIso, data.next_salary_date)
   const ratio = data.salary_amount > 0 ? data.remaining / data.salary_amount : 0
   const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)))
   const overspent = data.remaining < 0

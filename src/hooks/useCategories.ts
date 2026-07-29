@@ -6,12 +6,23 @@ import type { Category, CategoryType } from '@/types/database'
 /** UNIQUE 제약 위반. 같은 이름이 이미 있다는 뜻(삭제된 것 포함). */
 export const UNIQUE_VIOLATION = '23505'
 
-/** 정렬은 생성순 고정. 칩 그리드 위치가 안 바뀌어야 근육 기억이 생긴다. */
+/**
+ * 정렬은 생성순 고정. 칩 그리드 위치가 안 바뀌어야 근육 기억이 생긴다.
+ *
+ * id 를 동순위 기준으로 함께 넘긴다. created_at 만으로 정렬하면 값이 같은 행들의
+ * 순서가 비결정적이다 — Postgres 는 UPDATE 시 새 행 버전을 힙 끝에 쓰므로,
+ * 이모지 하나만 바꿔도 칩이 자리를 옮긴다. 실제로 그랬다(마이그레이션 0006).
+ *
+ * 0006 이 시드 타임스탬프를 벌리고 유일 인덱스까지 걸었으므로 이제 동순위는
+ * 생기지 않는다. 그래도 남겨 둔다 — 정렬의 결정성을 한 곳에서만 보장하면
+ * 그곳이 무너질 때 조용히 깨진다.
+ */
 async function fetchCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from('categories')
     .select('*')
     .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
   if (error) throw error
   return data
 }
@@ -175,8 +186,21 @@ export function useRestoreCategory() {
   })
 }
 
-/** 월급 위젯 기준 카테고리 지정. profiles 한 행 수정으로 끝난다. */
+type Profile = { id: string; nickname: string; salary_category_id: string | null }
+
+/**
+ * 월급 위젯 기준 카테고리 지정. profiles 한 행 수정으로 끝난다.
+ *
+ * 낙관적으로 먼저 반영한다. 이 체크박스의 진실은 서버에 있어서, 서버 값만 보면
+ * 왕복이 끝날 때까지 누른 표시가 나지 않았다 — 로컬에서 재어 보니 100~300ms 고
+ * 느린 망에서는 수 초다. 그동안 화면이 그대로라 사용자는 한 번 더 누르는데,
+ * 그 두 번째 클릭이 지정을 해제한다.
+ *
+ * profile 캐시를 미리 바꾸면 체크박스와 월급 위젯이 함께 즉시 반응하고,
+ * 실패하면 이전 값으로 되돌린다.
+ */
 export function useSetSalaryCategory() {
+  const qc = useQueryClient()
   const invalidate = useInvalidate()
   return useMutation({
     mutationFn: async (categoryId: string | null) => {
@@ -185,6 +209,18 @@ export function useSetSalaryCategory() {
         .update({ salary_category_id: categoryId })
         .eq('id', await currentUserId())
       if (error) throw error
+    },
+    onMutate: async (categoryId) => {
+      // 진행 중인 refetch 가 낙관값을 덮어쓰지 못하게 먼저 끊는다.
+      await qc.cancelQueries({ queryKey: qk.profile() })
+      const previous = qc.getQueryData<Profile>(qk.profile())
+      qc.setQueryData<Profile>(qk.profile(), (old) =>
+        old ? { ...old, salary_category_id: categoryId } : old,
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(qk.profile(), ctx.previous)
     },
     onSuccess: invalidate,
   })

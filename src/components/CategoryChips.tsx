@@ -43,20 +43,34 @@ export function CategoryChips({
   const recentShown = recent.slice(0, RECENT)
 
   return (
-    <div className="space-y-3">
+    <div>
+      {/*
+        최근 줄은 아래 그리드와 **모양이 달라야** 한다. 처음에는 같은 4열 그리드를
+        위에 하나 더 얹었는데, 같은 크기·같은 스타일의 격자가 둘 쌓여 한 덩어리로
+        읽혔다. "최근" 라벨도 x=0 인데 첫 칩의 이모지는 셀 가운데라 라벨만 붕 떴다.
+        가로 pill 로 바꾸면 격자가 아니라 "바로가기"로 읽히고, 왼쪽 정렬이라
+        라벨과 줄도 맞는다. 라벨 폭 w-10 은 아래 금액·날짜·메모 줄과 같은 값이다.
+      */}
       {recentShown.length > 0 && (
-        <div>
-          <p className="mb-1 text-caption text-ink-muted">최근</p>
-          {/* 아래 그리드와 같은 4열이라 열이 맞는다. 줄이 따로인 게 의도로 읽힌다. */}
-          <div role="group" aria-label="최근 사용한 카테고리" className="grid grid-cols-4 gap-1.5">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="w-10 shrink-0 text-label text-ink-muted">최근</span>
+          <div
+            role="group"
+            aria-label="최근 사용한 카테고리"
+            className="flex flex-1 flex-wrap gap-1.5"
+          >
             {recentShown.map((c) => (
-              <Chip key={c.id} category={c} selected={c.id === value} onSelect={onChange} />
+              <RecentPill key={c.id} category={c} selected={c.id === value} onSelect={onChange} />
             ))}
           </div>
         </div>
       )}
 
-      <div role="group" aria-label="카테고리" className="grid grid-cols-4 gap-1.5">
+      <div
+        role="group"
+        aria-label="카테고리"
+        className={`grid grid-cols-4 gap-1.5 ${recentShown.length > 0 ? 'border-t border-line pt-3' : ''}`}
+      >
         {shown.map((c) => (
           <Chip key={c.id} category={c} selected={c.id === value} onSelect={onChange} />
         ))}
@@ -81,6 +95,38 @@ export function CategoryChips({
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * 최근 줄의 가로 pill. 선택 표시는 그리드 칩과 같은 장치(배경 + 링 + 굵기)를 쓴다 —
+ * 모양은 달라도 "선택됨"을 읽는 방법은 하나여야 한다.
+ */
+function RecentPill({
+  category,
+  selected,
+  onSelect,
+}: {
+  category: Category
+  selected: boolean
+  onSelect: (id: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(category.id)}
+      aria-pressed={selected}
+      className={`flex items-center gap-1.5 rounded-control px-2.5 py-1.5 transition ${
+        selected ? 'bg-selected ring-2 ring-ink' : 'bg-surface-3 hover:bg-selected'
+      }`}
+    >
+      <span aria-hidden className="text-base leading-none">
+        {category.emoji}
+      </span>
+      <span className={`text-label ${selected ? 'font-semibold text-ink' : 'text-ink-2'}`}>
+        {category.name}
+      </span>
+    </button>
   )
 }
 

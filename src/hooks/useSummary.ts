@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { monthRange, today, type Month } from '@/lib/month'
+import { monthRange, shiftMonth, type Month } from '@/lib/month'
+import { useToday } from '@/hooks/useToday'
 import { qk } from '@/lib/queryKeys'
 import type { MonthSummaryRow, SalaryWidgetRow } from '@/types/database'
 
@@ -18,12 +19,12 @@ export function useMonthSummary(month: Month) {
   })
 }
 
-/** 전월 대비 계산용 */
+/**
+ * 전월 대비 계산용.
+ * 월 계산은 lib/month.ts 에만 둔다 — 여기 같은 식을 손으로 다시 쓰고 있었다.
+ */
 export function usePrevMonthSummary(month: Month) {
-  const [y, m] = month.split('-').map(Number)
-  const total = y * 12 + (m - 1) - 1
-  const prev = `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
-  return useMonthSummary(prev)
+  return useMonthSummary(shiftMonth(month, -1))
 }
 
 /**
@@ -33,9 +34,11 @@ export function usePrevMonthSummary(month: Month) {
  * KST 와 최대 하루 어긋나고, 거래 입력 폼도 로컬 날짜를 쓰기 때문이다.
  *
  * 반환값이 null 이면 급여 카테고리 미지정 / 삭제됨 / 급여 거래 없음 중 하나다.
+ *
+ * useToday 를 쓰므로 자정을 넘기면 키가 바뀌어 저절로 다시 조회된다.
  */
 export function useSalaryWidget() {
-  const p_today = today()
+  const p_today = useToday()
   return useQuery({
     queryKey: qk.salaryWidget(p_today),
     queryFn: async (): Promise<SalaryWidgetRow | null> => {
