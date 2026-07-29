@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { Callout } from '@/components/ui/Callout'
 import { EmojiPicker } from '@/components/EmojiPicker'
+import { MAX_CATEGORY_NAME, categoryNameError, normalizeSpaces } from '@/lib/rules'
 
 /**
  * onSubmit 이 이걸 반환하면 시트를 닫지 않는다 — 부모가 이미 다른 시트를 열었다는 뜻.
@@ -38,9 +39,11 @@ export function CategoryFormSheet({
     e.preventDefault()
     setError('')
 
-    const trimmed = name.trim().replace(/\s+/g, ' ')
-    if (trimmed.length < 1 || trimmed.length > 20) {
-      setError('이름은 1~20자로 입력해 주세요')
+    // 정규화는 DB 트리거와 같은 규칙이다 (lib/rules.ts).
+    const trimmed = normalizeSpaces(name)
+    const invalid = categoryNameError(trimmed)
+    if (invalid) {
+      setError(invalid)
       return
     }
 
@@ -66,7 +69,7 @@ export function CategoryFormSheet({
         <TextField
           label="이름"
           required
-          maxLength={20}
+          maxLength={MAX_CATEGORY_NAME}
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}

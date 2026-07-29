@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { PasswordField, TextField } from '@/components/ui/TextField'
 import { authFailureMessage, mailSendFailure } from '@/auth/authErrors'
 import { MIN_PASSWORD, passwordError } from '@/auth/password'
+import { MAX_NICKNAME, nicknameError, normalizeSpaces } from '@/lib/rules'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -22,14 +23,15 @@ export default function Signup() {
     e.preventDefault()
     setError('')
 
-    const trimmedNickname = nickname.trim()
+    const trimmedNickname = normalizeSpaces(nickname)
     const invalidPassword = passwordError(password)
     if (invalidPassword) {
       setError(invalidPassword)
       return
     }
-    if (trimmedNickname.length < 1 || trimmedNickname.length > 20) {
-      setError('닉네임은 1~20자로 입력해 주세요')
+    const invalidNickname = nicknameError(trimmedNickname)
+    if (invalidNickname) {
+      setError(invalidNickname)
       return
     }
 
@@ -141,7 +143,7 @@ export default function Signup() {
         <TextField
           label="닉네임"
           required
-          maxLength={20}
+          maxLength={MAX_NICKNAME}
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
         />

@@ -11,8 +11,7 @@ import { SubtleButton } from '@/components/ui/Button'
 import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { Callout } from '@/components/ui/Callout'
 import { useProfile, useUpdateNickname } from '@/hooks/useCategories'
-
-const MAX_NICKNAME = 20
+import { MAX_NICKNAME, nicknameError, normalizeSpaces } from '@/lib/rules'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
@@ -89,8 +88,11 @@ export default function Settings() {
 }
 
 /**
- * 닉네임 변경. 가입 폼과 같은 규칙(1~20자, 앞뒤 공백 제거)을 쓴다.
- * 규칙이 두 화면에서 갈리면 가입은 통과한 값이 수정에서 막힌다.
+ * 닉네임 변경. 가입 폼과 같은 규칙을 쓴다 (lib/rules.ts).
+ *
+ * 이전에는 "같은 규칙을 쓴다" 고 적어 두고 실제로는 복붙이었다 — 이 화면은
+ * MAX_NICKNAME 상수를, 가입 화면은 리터럴 20 과 리터럴 문구를 썼다. 한쪽만
+ * 고치면 가입은 통과한 값이 수정에서 막힌다.
  */
 function ChangeNicknameSheet({
   current,
@@ -105,14 +107,15 @@ function ChangeNicknameSheet({
   const [error, setError] = useState('')
   const update = useUpdateNickname()
 
-  const trimmed = nickname.trim()
+  const trimmed = normalizeSpaces(nickname)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
-    if (trimmed.length < 1 || trimmed.length > MAX_NICKNAME) {
-      setError(`닉네임은 1~${MAX_NICKNAME}자로 입력해 주세요`)
+    const invalid = nicknameError(trimmed)
+    if (invalid) {
+      setError(invalid)
       return
     }
     // 안 바뀐 값으로 왕복하지 않는다. 실패할 일도 없는 요청이라 조용히 닫는다.
