@@ -4,6 +4,8 @@ name: CI
 # 검증할 수 있는 것은 정적 검사와 빌드까지다. e2e(npm run test:e2e)는 개발
 # 서버와 전용 Supabase 계정이 필요해서 여기 넣지 않는다 — 넣으면 시크릿이
 # 없는 포크 PR 에서 항상 빨간불이 된다. 로컬에서 돌린다(e2e/README.md).
+#
+# main 에 들어온 것은 verify 를 통과한 뒤 Cloudflare Pages 로 배포된다(아래 deploy).
 
 on:
   push:
@@ -44,3 +46,72 @@ jobs:
       # 드러나는 실패가 있다 — 라우트 단위 코드 스플리팅의 동적 import 경로 오타.
       - name: 빌드
         run: npm run build
+
+  # 배포. 정적 호스팅으로 끝난다 — 올릴 것은 dist/ 뿐이다.
+  #
+  # verify 를 통과한 main 만 나간다. PR 에서는 돌지 않는다 — 포크 PR 에 시크릿을
+  # 내주지 않기 위해서이기도 하고, PR 마다 프로덕션에 올릴 이유도 없다.
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    env:
+      # pages.dev 주소가 이 이름에서 나온다. 전역으로 유일해야 하므로 이미 쓰이는
+      # 이름이면 프로젝트 생성이 실패한다 — 그럴 때 고칠 곳은 여기 한 줄이다.
+      PROJECT: expense-tracker
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # 시크릿이 비면 배포는 성공하지만 앱은 "설정이 필요합니다" 화면만 띄운다
+      # (lib/supabase.ts 의 isSupabaseConfigured). 조용히 망가진 것을 올리는 대신
+      # 여기서 멈춘다 — Vite 는 빌드 시점에 값을 끼워 넣으므로 나중에 고칠 수 없다.
+      - name: 시크릿 확인
+        run: |
+          missing=""
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            eval "value=\$$name"
+            if [ -z "$value" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::리포지터리 시크릿이 없다:$missing (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - run: npm ci
+
+      # anon key 는 공개돼도 되는 값이다 — 데이터 격리는 RLS 가 강제한다.
+      # 그래도 시크릿에 두는 이유는 프로젝트 주소를 레포에 박지 않기 위해서다.
+      - name: 빌드
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      # 첫 배포에서는 프로젝트가 없다. 이미 있으면 이 단계가 실패하는데 그건 정상이라
+      # 넘긴다 — 다음 단계의 배포가 실제 성공 여부를 말한다.
+      - name: Pages 프로젝트 준비
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ env.PROJECT }} --production-branch=main
+
+      - name: 배포
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ env.PROJECT }} --branch=main
