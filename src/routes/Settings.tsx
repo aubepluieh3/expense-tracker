@@ -12,6 +12,7 @@ import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { Callout } from '@/components/ui/Callout'
 import { useProfile, useUpdateNickname } from '@/hooks/useProfile'
 import { MAX_NICKNAME, nicknameError, normalizeSpaces } from '@/lib/rules'
+import { GUIDE_PATH } from '@/lib/links'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
@@ -60,6 +61,22 @@ export default function Settings() {
         <Button variant="ghost" onClick={() => void signOut()}>
           로그아웃
         </Button>
+
+        {/*
+          설명서. public/ 의 정적 문서라 <Link> 가 아니라 <a> 다 — TextLink 는 라우터 Link 를 감싼다.
+          매일 쓰는 사람에게는 한 번 보면 끝인 링크라 본문과 같은 무게를 주지 않는다.
+          화면 맨 아래, 회색, caption 크기.
+        */}
+        <p className="text-center">
+          <a
+            href={GUIDE_PATH}
+            target="_blank"
+            rel="noreferrer"
+            className="text-caption text-ink-muted underline"
+          >
+            설명서
+          </a>
+        </p>
       </div>
 
       {nicknameOpen && profile.data && (

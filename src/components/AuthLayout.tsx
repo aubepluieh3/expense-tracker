@@ -1,3 +1,5 @@
+import { GUIDE_PATH } from '@/lib/links'
+
 /**
  * 인증 화면(로그인·가입·비밀번호) 공통 껍데기.
  *
@@ -31,6 +33,27 @@ export function AuthLayout({
       {description && <p className="mt-2 text-label text-ink-2">{description}</p>}
       <div className="mt-8">{children}</div>
       {footer && <div className="mt-6 text-center text-label">{footer}</div>}
+
+      {/*
+        설명서. 로그인 전 화면에 둔다.
+
+        처음에는 설정 화면에만 넣었는데, 설정은 로그인 뒤에 있어서 가입 전 사람은
+        볼 방법이 없었다 — 무엇에 가입하는지 확인하려는 사람이 정확히 못 보는 자리다.
+        여기 두면 로그인·가입·비밀번호 화면 전부에서 닿는다.
+
+        라우터가 다루지 않는 정적 문서라 <Link> 가 아니라 <a> 다. 새 탭으로 연다 —
+        입력하던 이메일·비밀번호를 잃지 않는다.
+      */}
+      <p className="mt-8 text-center">
+        <a
+          href={GUIDE_PATH}
+          target="_blank"
+          rel="noreferrer"
+          className="text-caption text-ink-muted underline"
+        >
+          이 앱은 무엇인가요?
+        </a>
+      </p>
     </main>
   )
 }
