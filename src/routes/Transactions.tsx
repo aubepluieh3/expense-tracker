@@ -20,6 +20,7 @@ import {
   useTransaction,
   type TransactionListItem,
 } from '@/hooks/useTransactions'
+import { useSalaryWidget } from '@/hooks/useSummary'
 import { useToday } from '@/hooks/useToday'
 import { currentMonth, monthLabel } from '@/lib/month'
 import type { Category, CategoryType } from '@/types/database'
@@ -169,6 +170,17 @@ export default function Transactions() {
     })
   }
 
+  /**
+   * 월급 위젯이 대표 숫자 자리를 차지하는가.
+   *
+   * 이번 달이 아니면 위젯은 스스로 내려간다(SalaryWidget) — 그 규칙을 여기서
+   * 다시 판단하지 않도록 같은 식을 쓴다. 아래 빈 상태 문구도 이미 이 비교를 한다.
+   */
+  const salary = useSalaryWidget()
+  const thisMonth = month === currentMonth()
+  const salaryPending = thisMonth && salary.isPending
+  const salaryHasHero = thisMonth && !!salary.data
+
   // "예정" 배지의 기준. 자정을 넘기면 갱신된다 — 고정값이면 어제 거래에 배지가 남는다.
   const todayIso = useToday()
   const filterActive = !!typeFilter || !!categoryFilter
@@ -205,8 +217,32 @@ export default function Transactions() {
         }
       />
 
-      <SalaryWidget month={month} onRecordSalary={openNew} />
-      <MonthSummary month={month} />
+      {/*
+        대표 숫자 자리는 하나다.
+
+        보통은 월급 위젯이 쓴다 — "이번 월급 얼마 남았지?" 가 이 앱의 첫 질문이다
+        (기획서 §3.6). 그 위젯이 자리를 비우는 경우가 둘 있다: 다른 달을 보고 있을
+        때(위젯이 스스로 내려간다)와 급여 정보가 없을 때. 그때는 이 달 남은 금액이
+        대표가 된다 — 그 순간 "지금 얼마 남았나" 에 답하는 숫자는 그것뿐인데,
+        예전에는 한 줄짜리로 안내 카드 아래에 있어서 화면에서 가장 중요한 값이
+        가장 작게 보였다.
+
+        조회 중에는 위젯의 스켈레톤만 둔다. 둘을 함께 그리면 결과가 온 순간
+        배치가 통째로 바뀌어 화면이 한 번 튄다.
+      */}
+      {salaryPending ? (
+        <SalaryWidget month={month} onRecordSalary={openNew} />
+      ) : salaryHasHero ? (
+        <>
+          <SalaryWidget month={month} onRecordSalary={openNew} />
+          <MonthSummary month={month} />
+        </>
+      ) : (
+        <>
+          <MonthSummary month={month} variant="hero" />
+          <SalaryWidget month={month} onRecordSalary={openNew} compactGuidance />
+        </>
+      )}
 
       {/* 사용자의 대부분은 "전체"로 본다. 필터 줄이 상시로 자리를 차지할 이유가 없다. */}
       {filterOpen && (

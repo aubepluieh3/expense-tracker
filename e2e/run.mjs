@@ -258,22 +258,40 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.getByText('아직 기록이 없어요').waitFor({ timeout: 20000 })
   })
 
+  /*
+    급여 정보가 없으면 대표 숫자 자리를 "이 달 남은 금액" 이 차지하고, 월급 안내는
+    한 줄로 내려간다 (routes/Transactions.tsx). 그 상태를 확인한다 — 예전에는 안내
+    카드가 대표 자리에 있었고 실제 숫자가 그 아래 작은 줄이었다.
+  */
+  await check('빈 상태', '기록이 없으면 대표 숫자를 두지 않는다', async () => {
+    // 0원 을 24px 로 띄우면 알려주는 것이 없고, 아래 "아직 기록이 없어요" 와 같은 말이 된다
+    expect(
+      (await page.getByText('월 남은 금액').count()) === 0,
+      '기록이 없는데 남은 금액을 대표 숫자로 띄운다',
+    )
+    // 안내는 "남은 금액을 보여드려요" 라고 하지 않는다 — 기간 축을 바꿔 보자는 제안이다
+    expect(
+      (await page.getByText('남은 금액을 보여드려요').count()) === 0,
+      '월급 안내가 남은 금액을 보여준다고 말한다',
+    )
+  })
+
   await check(
     '빈 상태',
-    '월급 위젯 — 급여 카테고리는 이미 지정돼 있으니 거래 등록으로 보낸다',
+    '월급 안내 — 급여 카테고리는 이미 지정돼 있으니 거래 등록으로 보낸다',
     async () => {
-      await page.getByText('급여를 등록하면 남은 금액을 보여드려요').waitFor({ timeout: 15000 })
-      await page.getByRole('button', { name: '급여 거래 등록하기' }).waitFor({ timeout: 5000 })
+      await page.getByText('월급 기준으로도 보여드려요').waitFor({ timeout: 15000 })
+      await page.getByRole('button', { name: '등록하기' }).waitFor({ timeout: 5000 })
       // 카테고리 관리로 보내면 이미 지정된 걸 보고 돌아 나와야 한다
       expect(
-        (await page.getByRole('link', { name: /급여 카테고리/ }).count()) === 0,
+        (await page.getByRole('link', { name: '지정하기' }).count()) === 0,
         '급여 카테고리가 지정돼 있는데 카테고리 관리로 보낸다',
       )
     },
   )
 
-  await check('빈 상태', '위젯의 "급여 거래 등록하기" 가 시트를 연다', async () => {
-    await page.getByRole('button', { name: '급여 거래 등록하기' }).click()
+  await check('빈 상태', '월급 안내의 "등록하기" 가 시트를 연다', async () => {
+    await page.getByRole('button', { name: '등록하기' }).click()
     await dlg().waitFor({ timeout: 15000 })
     await dlg().getByRole('button', { name: '닫기' }).click()
     await dlg().waitFor({ state: 'detached', timeout: 10000 })
@@ -774,7 +792,11 @@ for (round = 1; round <= ROUNDS; round++) {
 
   await check('카테고리', '급여 지정 이동 → 위젯이 빈 상태로', async () => {
     await page.getByRole('link', { name: /내역/ }).click()
-    await page.getByText('급여를 등록하면 남은 금액을 보여드려요').waitFor({ timeout: 20000 })
+    // 급여를 '용돈' 으로 옮겼으니 이 달 급여 거래가 없어져 위젯이 값을 잃는다.
+    // 안내는 한 줄로 내려가고, 대표 자리는 이 달 남은 금액이 가져간다 —
+    // 이 시점에는 거래가 쌓여 있어서 0원 이 아니다.
+    await page.getByText('월급 기준으로도 보여드려요').waitFor({ timeout: 20000 })
+    await page.getByText('월 남은 금액').first().waitFor({ timeout: 15000 })
   })
 
   await check('카테고리', '← 설정 링크로 복귀', async () => {

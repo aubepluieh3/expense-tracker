@@ -18,10 +18,19 @@ import { currentMonth, daysBetween, shortDate, type Month } from '@/lib/month'
 export function SalaryWidget({
   month,
   onRecordSalary,
+  compactGuidance = false,
 }: {
   /** 보고 있는 달. 이번 달이 아니면 위젯을 내린다. */
   month: Month
   onRecordSalary?: () => void
+  /**
+   * 안내를 카드 대신 한 줄로 줄인다.
+   *
+   * 대표 숫자 자리를 월 남은 금액이 차지할 때 쓴다. 그때 이 안내는 화면의 주인공이
+   * 아니라 "월급 기준으로도 볼 수 있다"는 부가 제안이다. 카드로 두면 3줄을 차지해
+   * 정작 답이 되는 숫자를 아래로 밀어냈다.
+   */
+  compactGuidance?: boolean
 }) {
   const { data, isPending, isError } = useSalaryWidget()
   const profile = useProfile()
@@ -88,6 +97,34 @@ export function SalaryWidget({
 
     const salaryId = profile.data?.salary_category_id
     const designated = !!salaryId && (categories.data ?? []).some((c) => c.id === salaryId)
+
+    /*
+      문구가 "남은 금액을 보여드려요" 가 아니다. 대표 자리에 이미 남은 금액이 떠
+      있으므로 그렇게 말하면 거짓이 된다 — 없는 것을 준다고 하는 셈이다.
+      여기서 제안하는 것은 기간 축을 달력월에서 월급 사이클로 바꿔 보는 것이다.
+    */
+    if (compactGuidance) {
+      return (
+        <p className="mt-2 text-caption text-ink-muted">
+          💼{' '}
+          {designated ? (
+            <>
+              월급을 등록하면 월급 기준으로도 보여드려요{' '}
+              <button type="button" onClick={onRecordSalary} className="underline">
+                등록하기
+              </button>
+            </>
+          ) : (
+            <>
+              급여 카테고리를 정하면 월급 기준으로도 보여드려요{' '}
+              <TextLink to="/settings/categories" className="font-normal underline">
+                지정하기
+              </TextLink>
+            </>
+          )}
+        </p>
+      )
+    }
 
     return (
       <div className="mt-3 rounded-control bg-surface-2 px-4 py-3">
