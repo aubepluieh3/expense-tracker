@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '@/components/ui/Button'
+import { Callout } from '@/components/ui/Callout'
 import { TextLink } from '@/components/ui/TextLink'
 import type { Category, CategoryType } from '@/types/database'
 
@@ -26,6 +28,9 @@ export function CategoryChips({
   recent = [],
   value,
   onChange,
+  pending = false,
+  error = false,
+  onRetry,
 }: {
   categories: Category[]
   /** 빈 상태 문구에만 쓴다 — "지출 카테고리가 없습니다" 가 "카테고리가 없습니다" 보다 정확하다. */
@@ -38,6 +43,19 @@ export function CategoryChips({
   recent?: Category[]
   value: string | null
   onChange: (id: string) => void
+  /**
+   * 카테고리 조회 상태.
+   *
+   * 칩이 비어 보이는 이유가 셋이다 — 아직 안 왔다 / 실패했다 / 정말 없다.
+   * 구분하지 않았더니 조회 중에도 "지출 카테고리가 없습니다 · 만들러 가기 →" 가
+   * 떴다. 기본 카테고리 10개가 멀쩡히 있는 사람에게 없다고 말한 셈이고, 링크를
+   * 따라가면 그 10개가 그대로 있다. 로딩 표시가 없는 것보다 나쁜 상태였다.
+   *
+   * 그리드를 그리는 곳이 스켈레톤도 그린다 — 몇 열인지 아는 것은 이 파일뿐이다.
+   */
+  pending?: boolean
+  error?: boolean
+  onRetry?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const overflow = categories.length > VISIBLE
@@ -45,6 +63,41 @@ export function CategoryChips({
   // 9칸이 되어 마지막 줄에 한 칸만 남았다.
   const shown = expanded || !overflow ? categories : categories.slice(0, VISIBLE - 1)
   const recentShown = recent.slice(0, RECENT)
+
+  // 조회가 끝나기 전에는 아무 말도 하지 않는다. 자리만 잡아 두면 칩이 도착할 때
+  // 시트 높이가 튀지 않는다 — 4열 두 줄은 기본 카테고리 개수(지출 6 · 수입 4)를 덮는다.
+  if (pending) {
+    return (
+      <div className="grid grid-cols-4 gap-1.5" aria-hidden>
+        {Array.from({ length: 8 }, (_, i) => (
+          // 높이를 숫자로 박지 않는다. 칩과 같은 상자(패딩·간격·글자 크기)에 보이지
+          // 않는 내용을 채워서 높이를 얻는다 — 칩 디자인이 바뀌면 같이 따라간다.
+          <div key={i} className="animate-pulse rounded-control bg-surface-3 px-1 py-2.5">
+            <span className="invisible block text-xl">가</span>
+            <span className="invisible mt-0.5 block text-caption">가</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  /*
+    실패했을 때도 "없습니다" 라고 하면 안 된다 — 사용자가 카테고리를 새로 만들러
+    가고, 거기서 이미 있는 것을 본다. 여기서 다시 시도할 수 있게 둔다: 시트를 닫고
+    다시 여는 것으로도 재조회되지만, 그건 실패했다는 사실을 아는 사람만 할 수 있다.
+  */
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-4">
+        <Callout tone="error">카테고리를 불러오지 못했습니다</Callout>
+        {onRetry && (
+          <Button variant="outline" size="inline" onClick={onRetry}>
+            다시 시도
+          </Button>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div>

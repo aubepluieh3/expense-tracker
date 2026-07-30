@@ -1,7 +1,7 @@
 import { TextLink } from '@/components/ui/TextLink'
 import { useCategories } from '@/hooks/useCategories'
 import { useProfile } from '@/hooks/useProfile'
-import { useSalaryWidget } from '@/hooks/useSummary'
+import { useSalaryWidget, useUpcomingSalary } from '@/hooks/useSummary'
 import { useToday } from '@/hooks/useToday'
 import { abbrevAmount, formatAmount } from '@/lib/format'
 import { currentMonth, daysBetween, shortDate, type Month } from '@/lib/month'
@@ -18,16 +18,30 @@ import { currentMonth, daysBetween, shortDate, type Month } from '@/lib/month'
 export function SalaryWidget({
   month,
   onRecordSalary,
+  onOpenTransaction,
 }: {
   /** 보고 있는 달. 이번 달이 아니면 위젯을 내린다. */
   month: Month
   onRecordSalary?: () => void
+  /**
+   * 이미 등록해 둔 급여 거래를 연다.
+   *
+   * 지급일을 잘못 넣어서 위젯이 비는 경우가 있다. 날짜만 알려주고 끝내면 그 거래를
+   * 목록에서 손으로 찾아야 하는데, 미래 날짜라 목록 맨 위에 있긴 하지만 "이걸
+   * 고치면 된다" 는 연결이 끊긴다.
+   */
+  onOpenTransaction?: (id: string) => void
 }) {
-  const { data, isPending, isError } = useSalaryWidget()
+  const { data, isPending, isSuccess, isError } = useSalaryWidget()
   const profile = useProfile()
   const categories = useCategories()
   // 아래 이른 반환들보다 위에서 부른다 — 훅은 조건 뒤에 올 수 없다.
   const todayIso = useToday()
+  /**
+   * 위젯이 값을 잃은 이유를 가르는 조회. 정상 상태에서는 돌지 않는다.
+   * profile 이 오기 전에는 카테고리 id 가 없어 hook 안에서 스스로 멈춘다.
+   */
+  const upcoming = useUpcomingSalary(profile.data?.salary_category_id ?? null, isSuccess && !data)
 
   /**
    * 이번 달에만 보여준다.
@@ -57,42 +71,97 @@ export function SalaryWidget({
   if (isError) return null
 
   /**
-   * 위젯이 빈 이유는 셋이다 — 급여 카테고리 미지정 / 그 카테고리가 삭제됨 /
-   * 급여 거래가 없음. 안내를 하나로 뭉치면 링크가 절반의 사용자에게 헛다리다.
+   * 위젯이 빈 이유는 넷이다 — 급여 카테고리 미지정 / 그 카테고리가 삭제됨 /
+   * 급여 거래가 없음 / **등록했지만 지급일이 아직 안 옴**. 안내를 하나로 뭉치면
+   * 링크가 절반의 사용자에게 헛다리다.
    *
    * 이전에는 세 경우 모두 카테고리 관리로 보냈다. 그런데 기본 카테고리에 급여가
    * 이미 지정돼 있어서, 첫 사용자의 실제 원인은 대부분 "급여 거래를 안 넣음"이다.
    * 카테고리 화면에 가면 이미 지정된 걸 보고 다시 돌아 나와야 했다.
+   *
+   * 네 번째는 뒤늦게 발견했다. RPC 가 `occurred_on <= p_today` 로 걸러서
+   * (0003_summary.sql) 미래 날짜로 등록한 급여는 위젯에 안 잡히는데, 화면은
+   * "월급을 등록하면" 이라고 말했다 — 방금 등록한 사람에게 등록하라고 한 것이다.
+   * 지급일을 잘못 넣었을 때 나오는 상태이기도 해서, 날짜를 보여주고 그 거래로
+   * 보낸다.
    */
   if (!data) {
+    /*
+      어느 안내를 띄울지는 "급여 카테고리가 지정돼 있는가" 로 갈린다. 그 답을
+      아직 모르는 동안 기본값으로 계산하면 **틀린 쪽으로 보낸다** — categories 가
+      오기 전에는 designated 가 false 여서 "급여 카테고리를 정하면" 이 떴고,
+      링크를 따라가면 이미 지정된 것을 보고 돌아 나와야 했다. 위 주석이 걱정한
+      바로 그 상황이 로딩 중에 되살아난 셈이다.
+
+      모르는 동안에는 묻지 않는다: 위와 같은 스켈레톤으로 자리만 잡는다.
+      판정에 실패했으면 아무 말도 하지 않는다 — 이 위젯은 조회 실패에 이미
+      침묵을 택했고(위 isError), 반쪽 정보로 엉뚱한 화면에 보내는 것보다 낫다.
+    */
+    if (profile.isPending || categories.isPending) {
+      return (
+        <div className="mt-3 space-y-2" aria-hidden>
+          <div className="h-3 w-24 animate-pulse rounded bg-surface-3" />
+          <div className="h-7 w-40 animate-pulse rounded bg-surface-3" />
+        </div>
+      )
+    }
+    if (profile.isError || categories.isError) return null
+
     const salaryId = profile.data?.salary_category_id
     const designated = !!salaryId && (categories.data ?? []).some((c) => c.id === salaryId)
 
-    return (
-      <div className="mt-3 rounded-control bg-surface-2 px-4 py-3">
-        {designated ? (
-          <>
-            <p className="text-label text-ink-2">급여를 등록하면 남은 금액을 보여드려요</p>
-            <button
-              type="button"
-              onClick={onRecordSalary}
-              className="mt-0.5 text-caption text-ink-muted underline"
-            >
-              급여 거래 등록하기
+    /*
+      문구가 "남은 금액을 보여드려요" 가 아니다. 대표 자리에 이미 남은 금액이 떠
+      있으므로 그렇게 말하면 거짓이 된다 — 없는 것을 준다고 하는 셈이다.
+      여기서 제안하는 것은 기간 축을 달력월에서 월급 사이클로 바꿔 보는 것이다.
+
+      한 줄로만 그린다. 카드(3줄) 형태도 있었지만 대표 자리를 남은 금액이 가져간
+      뒤로는 아무 경로에서도 닿지 않는 죽은 코드였다.
+    */
+    const line = 'mt-2 text-caption text-ink-muted'
+
+    if (!designated) {
+      return (
+        <p className={line}>
+          💼 급여 카테고리를 정하면 월급 기준으로도 보여드려요{' '}
+          <TextLink to="/settings/categories" className="font-normal underline">
+            지정하기
+          </TextLink>
+        </p>
+      )
+    }
+
+    /*
+      등록했는지 아직 모른다. 이 시점에 "등록하면" 이라고 말하면 이미 등록한 사람에게
+      틀린 말이 되므로, 답이 오기 전에는 아무 말도 하지 않는다. 조회가 실패해도 같다 —
+      이 위젯은 모를 때 침묵하는 쪽을 택했다.
+    */
+    if (upcoming.isPending || upcoming.isError) return null
+
+    // 지역 변수로 받는다 — 아래 onClick 클로저 안에서는 upcoming.data 의 좁히기가 유지되지 않는다.
+    const next = upcoming.data
+    if (next) {
+      const days = daysBetween(todayIso, next.occurred_on)
+      return (
+        <p className={line}>
+          💼 {shortDate(next.occurred_on)} 지급 예정
+          {days > 0 && ` · ${days}일 뒤`} · 그날부터 월급 기준으로 보여드려요{' '}
+          {onOpenTransaction && (
+            <button type="button" onClick={() => onOpenTransaction(next.id)} className="underline">
+              거래 열기
             </button>
-          </>
-        ) : (
-          <>
-            <p className="text-label text-ink-2">급여 카테고리를 정하면 남은 금액을 보여드려요</p>
-            <TextLink
-              to="/settings/categories"
-              className="mt-0.5 inline-block text-caption font-normal text-ink-muted"
-            >
-              급여 카테고리 지정하기
-            </TextLink>
-          </>
-        )}
-      </div>
+          )}
+        </p>
+      )
+    }
+
+    return (
+      <p className={line}>
+        💼 월급을 등록하면 월급 기준으로도 보여드려요{' '}
+        <button type="button" onClick={onRecordSalary} className="underline">
+          등록하기
+        </button>
+      </p>
     )
   }
 

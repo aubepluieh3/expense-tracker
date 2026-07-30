@@ -31,12 +31,37 @@ export default function Settings() {
             둘을 같은 모양으로 늘어놓으면 왜 하나만 바뀌는지 알 수 없다.
           */}
           <p className="text-ink-muted">닉네임</p>
-          <div className="mt-1 flex items-center gap-1">
-            <p className="min-w-0 flex-1 truncate text-ink">{profile.data?.nickname ?? '…'}</p>
-            {profile.data && (
+          {/*
+            로딩과 실패를 구분한다.
+
+            예전에는 둘 다 `…` 였다(profile.data?.nickname ?? '…'). 그 글자는
+            "불러오는 중" 으로 읽히는데, 조회가 실패하면 그 상태로 멈춘다 —
+            재시도 계기가 refetchOnReconnect 와 화면 재진입뿐이고 창 포커스
+            갱신은 꺼 두었으므로(lib/queryClient.ts), 그 화면에 머물러 있으면
+            아무 일도 일어나지 않는다. 실측으로 8초 동안 요청이 0건이었다.
+
+            즉 실패한 사용자는 기다리고, 기다려도 아무 일이 없고, 탈출 방법인
+            "탭을 나갔다 오기" 는 실패했다는 사실을 아는 사람만 할 수 있었다.
+            빈도는 낮지만(순간 단절 정도) 빠져나올 길이 없는 상태였다.
+
+            수정 버튼이 값이 온 뒤에야 나타나던 것도 함께 해결된다 — 세 상태가
+            모두 같은 높이의 한 줄을 차지하므로 누르려던 자리가 밀리지 않는다.
+          */}
+          {profile.isPending ? (
+            <div className="mt-1 flex h-9 items-center">
+              <div className="h-4 w-24 animate-pulse rounded bg-surface-3" aria-hidden />
+            </div>
+          ) : profile.data ? (
+            <div className="mt-1 flex items-center gap-1">
+              <p className="min-w-0 flex-1 truncate text-ink">{profile.data.nickname}</p>
               <SubtleButton onClick={() => setNicknameOpen(true)}>수정</SubtleButton>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-1 flex items-center gap-1">
+              <p className="min-w-0 flex-1 truncate text-ink-muted">불러오지 못했습니다</p>
+              <SubtleButton onClick={() => void profile.refetch()}>다시 시도</SubtleButton>
+            </div>
+          )}
           <p className="mt-3 text-ink-muted">이메일</p>
           <p className="mt-1 text-ink">{user?.email}</p>
         </div>

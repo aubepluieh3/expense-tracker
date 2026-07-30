@@ -2,23 +2,24 @@ import { rowEmojiClass, rowInteractiveClass } from '@/components/ui/List'
 import { formatAmount } from '@/lib/format'
 import { dayLabel } from '@/lib/month'
 import type { TransactionListItem } from '@/hooks/useTransactions'
-import type { Category } from '@/types/database'
 
 /**
  * 날짜 하나에 속한 거래들. 헤더에 그날 소계가 붙는다.
+ *
+ * 카테고리 맵을 받지 않는다 — 이름·이모지는 거래와 함께 온다(useTransactions 의
+ * SELECT). 예전에는 별도 조회한 맵에서 찾았고, 그게 늦거나 실패하면 모든 행이
+ * "알 수 없음 · 📦" 이 됐다.
  */
 export function DayGroup({
   date,
   items,
   upcoming,
-  categoryById,
   onSelect,
 }: {
   date: string
   items: TransactionListItem[]
   /** 오늘 이후 날짜 */
   upcoming: boolean
-  categoryById: Map<string, Category>
   onSelect: (id: string) => void
 }) {
   const net = items.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0)
@@ -44,17 +45,14 @@ export function DayGroup({
       </div>
       <ul>
         {items.map((t) => {
-          const category = categoryById.get(t.category_id)
           return (
             <li key={t.id}>
               <button onClick={() => onSelect(t.id)} className={rowInteractiveClass}>
                 <span aria-hidden className={rowEmojiClass}>
-                  {category?.emoji ?? '📦'}
+                  {t.categories.emoji}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-body text-ink">
-                    {category?.name ?? '알 수 없음'}
-                  </span>
+                  <span className="block truncate text-body text-ink">{t.categories.name}</span>
                   {t.memo && (
                     <span className="block truncate text-caption text-ink-muted">{t.memo}</span>
                   )}

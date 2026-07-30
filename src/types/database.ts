@@ -89,7 +89,22 @@ export interface Database {
           memo?: string | null
         }
         Update: Partial<TransactionRow>
-        Relationships: []
+        /**
+         * 관계를 적어 두면 select 에 categories(name, emoji) 를 임베드했을 때
+         * supabase-js 가 반환 타입을 추론한다. 비어 있으면 런타임은 되는데
+         * 타입만 "could not find the relation" 으로 막힌다.
+         */
+        Relationships: [
+          {
+            // 0001_init.sql 의 constraint 이름 그대로. 임베드 힌트로 실제 통하는지
+            // 확인했다 — 처음에 Postgres 자동 생성 이름을 추측해 적었더니 틀렸다.
+            foreignKeyName: 'transactions_category_fk'
+            columns: ['category_id', 'user_id', 'type']
+            isOneToOne: false
+            referencedRelation: 'categories'
+            referencedColumns: ['id', 'user_id', 'type']
+          },
+        ]
       }
     }
     Views: Record<string, never>
