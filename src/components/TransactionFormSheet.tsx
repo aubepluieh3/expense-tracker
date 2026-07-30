@@ -222,14 +222,25 @@ export function TransactionFormSheet({
       title={isEdit ? '거래 수정' : `${type === 'expense' ? '지출' : '수입'} 등록`}
       onClose={requestClose}
       action={
-        <button
+        /*
+          이 시트의 목적이 저장인데, 배경 없는 글자라 화면에서 가장 약한 액션이었다
+          (실측 21×24). 로그인·변경하기와 같은 위계로 올린다 — 채운 버튼.
+
+          아래로 내리지 않는다: Sheet 의 주석이 이유를 적어 두었다.
+          "하단 고정 버튼은 모바일 키보드에 반드시 가린다."
+
+          Button 을 쓴다. 이 저장소는 버튼이 하나여야 한다고 적어 두었는데
+          (ui/Button.tsx "앱의 유일한 버튼") 여기만 손으로 만든 버튼이었다.
+        */
+        <Button
+          variant="primary"
+          size="inline"
           type="submit"
           form="transaction-form"
           disabled={busy}
-          className="text-label font-semibold text-ink disabled:opacity-40"
         >
           {busy ? '저장 중…' : '저장'}
-        </button>
+        </Button>
       }
     >
       {/* ✕ 를 누른 자리 바로 아래에 띄운다. 시트 아래쪽에 두면 방금 누른 곳에서
@@ -329,7 +340,9 @@ export function TransactionFormSheet({
                   // 오늘이 아니면 링 + 굵기로 표시한다. 색을 쓰지 않는 이유는 이 앱의
                   // 강조색이 검정 하나뿐이고(index.css), 빨강은 삭제·초과에 예약돼 있어서다.
                   // 선택된 칩과 같은 장치라 사용자가 이미 학습한 신호다.
-                  className={`rounded-control border border-line-2 px-2 py-1.5 text-label text-ink outline-none focus:border-ink ${
+                  // h-9 로 옆 칩과 높이를 맞춘다. py 로 두면 테두리 2px 때문에
+                  // 칩(33px)보다 2px 높아서 세 컨트롤의 위아래 선이 어긋났다.
+                  className={`h-9 rounded-control border border-line-2 px-2 text-label text-ink outline-none focus:border-ink ${
                     dateNotice ? 'font-semibold ring-2 ring-ink' : ''
                   }`}
                 />
@@ -411,7 +424,8 @@ function QuickDate({
     <button
       type="button"
       onClick={() => onPick(value)}
-      className={`rounded-control px-2.5 py-1.5 text-label transition ${
+      // 행 안의 보조 컨트롤은 36px 로 맞춘다 — SubtleButton·날짜 input 과 같은 값.
+      className={`grid h-9 place-items-center rounded-control px-2.5 text-label transition ${
         active ? 'bg-accent text-white' : 'bg-surface-3 text-ink-2 hover:bg-selected'
       }`}
     >

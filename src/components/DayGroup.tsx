@@ -1,4 +1,4 @@
-import { rowEmojiClass, rowInteractiveClass } from '@/components/ui/List'
+import { rowEmojiClass, rowInteractiveClass, rowNameIndentClass } from '@/components/ui/List'
 import { formatAmount } from '@/lib/format'
 import { dayLabel } from '@/lib/month'
 import type { TransactionListItem } from '@/hooks/useTransactions'
@@ -27,7 +27,8 @@ export function DayGroup({
   return (
     <div className="mb-3">
       <div className="flex items-baseline justify-between border-b border-line pb-1.5">
-        <h2 className="flex items-center gap-1.5 text-label text-ink-muted">
+        {/* 행의 이름 열에 맞춘다. 구분선은 그대로 폭 전체를 쓴다 — 그룹의 경계이므로. */}
+        <h2 className={`flex items-center gap-1.5 text-label text-ink-muted ${rowNameIndentClass}`}>
           {dayLabel(date)}
           {/* 날짜 내림차순이라 미래 거래가 목록 맨 위에 온다. 월급 위젯은 미래 지출을
               "예정 지출"로 따로 뺐는데 목록에서 섞여 있으면 사용자가 오늘 날짜를

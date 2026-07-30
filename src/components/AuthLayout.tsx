@@ -29,7 +29,7 @@ export function AuthLayout({
         감상이 아니다 — 이름이 제목을 이기면 "로그인" 을 찾는 데 시간이 걸린다.
       */}
       <p className="text-label font-semibold text-ink-muted">가계부</p>
-      <h1 className="mt-1 text-xl font-semibold text-ink">{title}</h1>
+      <h1 className="mt-1 text-title font-semibold text-ink">{title}</h1>
       {description && <p className="mt-2 text-label text-ink-2">{description}</p>}
       <div className="mt-8">{children}</div>
       {footer && <div className="mt-6 text-center text-label">{footer}</div>}
@@ -49,7 +49,9 @@ export function AuthLayout({
           href={GUIDE_PATH}
           target="_blank"
           rel="noreferrer"
-          className="text-caption text-ink-muted underline"
+          // 다른 보조 링크와 같은 크기(text-label)를 쓴다. 12px 이던 동안 같은 층의
+          // 링크 세 개가 14/14/12 로 갈려 위계가 없는데 크기만 달랐다.
+          className="text-label text-ink-muted underline"
         >
           이 앱은 무엇인가요?
         </a>

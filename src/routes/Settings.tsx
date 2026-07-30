@@ -66,7 +66,8 @@ export default function Settings() {
           <p className="mt-1 text-ink">{user?.email}</p>
         </div>
 
-        <div className="border-y border-line">
+        {/* 경계선은 List 가 갖는다 — 여기서 한 번 더 감싸면 선이 두 겹이 된다. */}
+        <div>
           <List>
             <li>
               <Link to="/settings/categories" className={`${rowClass} text-body text-ink`}>

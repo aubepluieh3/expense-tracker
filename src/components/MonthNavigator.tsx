@@ -21,51 +21,60 @@ export function MonthNavigator({
   return (
     <>
       {/*
-        1fr auto 1fr 그리드로 월 라벨을 가운데 열에 둔다.
-        flex 로 하면 오른쪽 버튼이 있는 화면(내역)에서만 라벨이 왼쪽으로 밀려서,
-        탭을 옮길 때 라벨이 튄다.
+        `‹ 2026년 7월 ›` 을 한 덩어리로 묶어 왼쪽에 두고, 필터·추가는 오른쪽에 둔다.
+
+        이전에는 1fr auto 1fr 그리드로 라벨을 화면 중앙에 고정했다. 라벨은 정확히
+        중앙이었지만 **화살표가 비대칭**이 됐다 — 오른쪽 열에 필터(+데스크톱은 추가)가
+        같이 들어가서 › 가 안쪽으로 밀린다. 실측으로 모바일이 왼쪽 104px 대 오른쪽
+        64px, 데스크톱이 153px 대 43px 였다. 화살표가 라벨에서 100px 넘게 떨어지면
+        "이 달의 이전/다음" 이라는 연결도 끊긴다. › 와 필터 사이는 4px 뿐이어서
+        오조작도 생겼다.
+
+        중앙 정렬을 포기하는 대신 얻는 것: 화살표–라벨 거리가 좌우 같아지고,
+        "달을 옮기는 조작" 과 "목록에 손대는 조작" 이 좌우로 갈린다.
       */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center">
-        <div className="flex items-center gap-1 justify-self-start">
-          <button
-            aria-label="이전 달"
-            onClick={() => onChange(shiftMonth(month, -1))}
-            className="size-9 rounded-control text-ink-muted hover:bg-surface-3"
-          >
-            ‹
-          </button>
-          {/*
-            다른 달을 보고 있을 때만 나타난다. 8월까지 넘긴 사람이 돌아오려면
-            ‹ 를 그만큼 되짚어야 했다 — 월 선택 시트에 이번 달이 강조돼 있지만
-            그건 라벨을 눌러야 열리고, 라벨이 버튼이라는 표시가 없다.
-            이번 달에 있을 때는 자리를 비운다: 늘 있으면 뜻 없는 버튼이 하나 는다.
-          */}
-          {away && (
-            <button
-              onClick={() => onChange(currentMonth())}
-              className="rounded-control bg-surface-3 px-2 py-1 text-caption text-ink-2 transition hover:bg-selected hover:text-ink"
-            >
-              이번 달
-            </button>
-          )}
-        </div>
+      <div className="flex items-center gap-1">
+        <button
+          aria-label="이전 달"
+          onClick={() => onChange(shiftMonth(month, -1))}
+          className="size-9 shrink-0 rounded-control text-ink-muted hover:bg-surface-3"
+        >
+          ‹
+        </button>
         <button
           onClick={() => setPicking(true)}
           aria-label={`${monthLabel(month)} — 다른 달 선택`}
-          className="rounded-control px-3 py-1.5 text-body font-semibold text-ink hover:bg-surface-3"
+          className="shrink-0 rounded-control px-2 py-1.5 text-body font-semibold text-ink hover:bg-surface-3"
         >
           {monthLabel(month)}
         </button>
-        <div className="flex items-center gap-1 justify-self-end">
+        <button
+          aria-label="다음 달"
+          onClick={() => onChange(shiftMonth(month, 1))}
+          className="size-9 shrink-0 rounded-control text-ink-muted hover:bg-surface-3"
+        >
+          ›
+        </button>
+
+        {/*
+          다른 달을 보고 있을 때만 나타난다. 8월까지 넘긴 사람이 돌아오려면
+          ‹ 를 그만큼 되짚어야 했다 — 월 선택 시트에 이번 달이 강조돼 있지만
+          그건 라벨을 눌러야 열리고, 라벨이 버튼이라는 표시가 없다.
+          이번 달에 있을 때는 자리를 비운다: 늘 있으면 뜻 없는 버튼이 하나 는다.
+
+          달 조작 묶음의 끝에 둔다 — ‹ › 와 같은 일(달 이동)을 하는 버튼이다.
+        */}
+        {away && (
           <button
-            aria-label="다음 달"
-            onClick={() => onChange(shiftMonth(month, 1))}
-            className="size-9 rounded-control text-ink-muted hover:bg-surface-3"
+            onClick={() => onChange(currentMonth())}
+            className="shrink-0 rounded-control bg-surface-3 px-2 py-1 text-caption text-ink-2 transition hover:bg-selected hover:text-ink"
           >
-            ›
+            이번 달
           </button>
-          {right}
-        </div>
+        )}
+
+        {/* 목록에 손대는 조작(필터·추가)은 반대쪽으로 밀어 달 조작과 섞이지 않게 한다. */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">{right}</div>
       </div>
 
       {picking && (

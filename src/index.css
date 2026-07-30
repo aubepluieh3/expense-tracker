@@ -45,8 +45,14 @@
   --color-danger: #dc2626; /* 초과·삭제 */
   --color-danger-soft: #fef2f2; /* 에러 배경 */
 
-  /* 글자 크기 — 역할 4개 + hero */
+  /* 글자 크기 — 역할 5개 + hero */
   --text-hero: 1.5rem; /* 24px 위젯·통계 대표 숫자 */
+  /*
+    화면·시트 제목. 이 항목이 없던 동안 제목이 호출 지점에서 골라져 세 값으로
+    갈렸다 — 인증 화면 text-xl(20px) · 페이지 text-lg(18px) · 시트 text-label(14px).
+    시트 제목은 본문(15px)보다 작아서 위계가 뒤집혀 있었다.
+  */
+  --text-title: 1.25rem; /* 20px 화면·시트 제목 */
   --text-body: 0.9375rem; /* 15px 목록 항목·금액·입력 */
   --text-label: 0.875rem; /* 14px 라벨·버튼·설명문 */
   --text-caption: 0.75rem; /* 12px 보조 수치·배지 */
@@ -66,6 +72,22 @@ body {
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
   color: var(--color-ink);
+}
+
+/*
+  키보드 포커스 링.
+
+  규칙이 없어서 브라우저 기본값(`outline: 1px auto`)이 그대로 나왔다. 앱 색·라운딩과
+  무관한 링이라, 시트를 열면 ✕ 에 붙는 그 링이 "이 버튼만 테두리가 있다"로 읽혔다 —
+  QA 에서 실제로 그렇게 오독했다.
+
+  :focus-visible 만 쓴다. :focus 로 두면 마우스 클릭에도 링이 남는다.
+  offset 을 두는 이유는 행 안의 작은 버튼에서 링이 글자에 붙어 읽히지 않기 때문이다.
+*/
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
 }
 
 /*

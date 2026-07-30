@@ -31,7 +31,7 @@ export function Page({
   return (
     <Screen>
       {back && <div className="mb-2">{back}</div>}
-      <h1 className="text-lg font-semibold text-ink">{title}</h1>
+      <h1 className="text-title font-semibold text-ink">{title}</h1>
       <div className="mt-4">{children}</div>
     </Screen>
   )
