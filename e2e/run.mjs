@@ -290,9 +290,49 @@ for (round = 1; round <= ROUNDS; round++) {
     },
   )
 
-  await check('빈 상태', '월급 안내의 "등록하기" 가 시트를 연다', async () => {
+  /*
+    무엇을 적을지가 이미 정해진 경로다. 그런데도 수입 탭과 급여 칩을 손으로 두 번
+    더 눌러야 했다 — 이 앱의 설계 목표가 "탭 수 최소화" 인데(TransactionFormSheet)
+    가장 목적이 분명한 경로가 가장 많이 눌러야 했던 셈이다.
+  */
+  await check('빈 상태', '월급 안내의 "등록하기" → 수입 탭 + 급여 칩까지 선택', async () => {
     await page.getByRole('button', { name: '등록하기' }).click()
     await dlg().waitFor({ timeout: 15000 })
+    expect(
+      (await dlg()
+        .getByRole('radio', { name: '수입', exact: true })
+        .getAttribute('aria-checked')) === 'true',
+      '수입 탭이 선택돼 있지 않다',
+    )
+    await chip(/^급여/).waitFor({ timeout: 10000 })
+    expect(
+      (await chip(/^급여/).getAttribute('aria-pressed')) === 'true',
+      '급여 칩이 선택돼 있지 않다',
+    )
+    // 지출로 바꾸면 자동 선택이 풀려야 한다 — 급여는 수입 카테고리라
+    // 지출로 저장하면 복합 FK 가 거부한다(0001_init.sql).
+    await dlg().getByRole('radio', { name: '지출', exact: true }).click()
+    await waitUntil(
+      async () => (await grid().getByRole('button', { pressed: true }).count()) === 0,
+      '지출로 바꿨는데 선택된 칩이 남아 있다',
+    )
+    await dlg().getByRole('button', { name: '닫기' }).click()
+    await dlg().waitFor({ state: 'detached', timeout: 10000 })
+  })
+
+  await check('빈 상태', 'FAB 은 지출로 시작하고 아무 칩도 고르지 않는다', async () => {
+    await page.getByRole('button', { name: '거래 추가' }).click()
+    await dlg().waitFor({ timeout: 15000 })
+    expect(
+      (await dlg()
+        .getByRole('radio', { name: '지출', exact: true })
+        .getAttribute('aria-checked')) === 'true',
+      'FAB 이 지출로 시작하지 않는다',
+    )
+    expect(
+      (await grid().getByRole('button', { pressed: true }).count()) === 0,
+      'FAB 으로 열었는데 칩이 미리 선택돼 있다',
+    )
     await dlg().getByRole('button', { name: '닫기' }).click()
     await dlg().waitFor({ state: 'detached', timeout: 10000 })
   })
