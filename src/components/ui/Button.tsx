@@ -67,7 +67,9 @@ export function SubtleButton({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'default' | 'danger' }) {
   return (
     <button
-      className={`rounded-control px-2.5 py-2 text-label transition ${
+      // 높이를 고정한다. py 로 두면 이 버튼이 목록 행의 높이를 정해 버려서,
+      // 행 클래스를 공유해도 카테고리 관리만 62px 로 튀었다 (ui/List.tsx).
+      className={`grid h-9 place-items-center rounded-control px-2.5 text-label transition ${
         tone === 'danger'
           ? 'text-danger hover:bg-danger-soft'
           : 'text-ink-2 hover:bg-surface-3 hover:text-ink'

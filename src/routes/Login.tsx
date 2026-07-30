@@ -118,7 +118,10 @@ export default function Login() {
       </form>
 
       <p className="mt-4 text-center">
-        <Link to="/forgot-password" className="text-label text-ink-muted hover:text-ink">
+        {/* 링크는 밑줄로 표시한다 — 이 화면의 세 링크가 서로 다른 규칙을 쓰고 있었다.
+            (밑줄 없음 / 밑줄+굵게 / 12px 밑줄) 밑줄이 링크를 뜻하는지 강조를 뜻하는지
+            화면에서 판단할 수 없었다. */}
+        <Link to="/forgot-password" className="text-label text-ink-muted underline hover:text-ink">
           비밀번호를 잊으셨나요?
         </Link>
       </p>

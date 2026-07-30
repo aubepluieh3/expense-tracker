@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { ChartIcon, ListIcon, SlidersIcon } from '@/components/ui/icons'
 
 /**
  * 로그인 후 공통 셸.
@@ -15,9 +16,9 @@ import { NavLink, Outlet } from 'react-router-dom'
  */
 
 const TABS = [
-  { to: '/', label: '내역', icon: '📋' },
-  { to: '/stats', label: '통계', icon: '📊' },
-  { to: '/settings', label: '설정', icon: '⚙️' },
+  { to: '/', label: '내역', Icon: ListIcon },
+  { to: '/stats', label: '통계', Icon: ChartIcon },
+  { to: '/settings', label: '설정', Icon: SlidersIcon },
 ] as const
 
 export function AppLayout() {
@@ -36,9 +37,7 @@ export function AppLayout() {
                   }`
                 }
               >
-                <span aria-hidden className="text-base sm:text-label">
-                  {tab.icon}
-                </span>
+                <tab.Icon className="size-5 sm:size-4" />
                 {tab.label}
               </NavLink>
             </li>

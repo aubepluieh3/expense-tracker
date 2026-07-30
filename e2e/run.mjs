@@ -979,10 +979,27 @@ for (round = 1; round <= ROUNDS; round++) {
     expect(nav.y < 100, `상단 탭이어야 하는데 y=${Math.round(nav.y)}`)
   })
 
-  await check('데스크톱', '월 라벨이 컬럼 중앙', async () => {
-    const box = await desk.getByRole('button', { name: /\d{4}년 \d+월/ }).boundingBox()
-    const center = box.x + box.width / 2
-    expect(Math.abs(center - 720) < 3, `중앙(720)에서 ${Math.round(center - 720)}px 벗어남`)
+  /*
+    라벨을 컬럼 중앙에 고정하던 검증을 대신한다.
+
+    중앙 정렬은 포기했다 — 오른쪽 열에 필터·＋추가가 같이 들어가서, 라벨이 중앙일수록
+    **화살표가 비대칭**이 됐다(모바일 104px 대 64px, 데스크톱 153px 대 43px). 지금은
+    `‹ 라벨 ›` 을 한 덩어리로 묶어 왼쪽에 두고 목록 조작은 오른쪽으로 보낸다.
+
+    그래서 지켜야 할 값이 "중앙" 에서 "좌우 대칭" 으로 바뀌었다.
+  */
+  await check('데스크톱', '‹ 라벨 › 이 한 덩어리 — 좌우 간격이 같다', async () => {
+    const prev = await desk.getByLabel('이전 달').boundingBox()
+    const label = await desk.getByRole('button', { name: /\d{4}년 \d+월/ }).boundingBox()
+    const next = await desk.getByLabel('다음 달').boundingBox()
+    const left = label.x - (prev.x + prev.width)
+    const right = next.x - (label.x + label.width)
+    expect(
+      Math.abs(left - right) <= 2,
+      `화살표–라벨 간격이 좌 ${Math.round(left)}px · 우 ${Math.round(right)}px 로 어긋남`,
+    )
+    // 달 조작 묶음이 왼쪽에 있어야 한다 — 오른쪽으로 밀리면 필터와 섞인다
+    expect(next.x + next.width < 720, `달 조작이 컬럼 중앙을 넘어감 (${Math.round(next.x)})`)
   })
 
   await check('데스크톱', '＋추가 버튼이 등록 시트를 연다', async () => {

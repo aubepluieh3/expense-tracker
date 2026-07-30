@@ -114,7 +114,13 @@ export function Sheet({
         tabIndex={-1}
         className="relative max-h-[92dvh] w-full max-w-[520px] overflow-y-auto rounded-t-sheet bg-surface p-5 outline-none sm:rounded-sheet"
       >
-        <div className="mb-4 grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2">
+        {/*
+          1fr auto 1fr — 제목을 가운데 열에 두고 양쪽에 같은 폭을 준다.
+          이전에는 오른쪽 열이 2.5rem 고정이라 액션이 텍스트 한 단어보다 커질 수
+          없었다. 그래서 시트의 주요 동작인 "저장" 이 배경 없는 21×24 글자로
+          남아 있었다. 월 네비게이터가 같은 그리드를 쓴다.
+        */}
+        <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <button
             onClick={onClose}
             aria-label="닫기"
@@ -122,7 +128,7 @@ export function Sheet({
           >
             ✕
           </button>
-          <h2 className="text-center text-label font-semibold text-ink">{title}</h2>
+          <h2 className="text-center text-title font-semibold text-ink">{title}</h2>
           <div className="justify-self-end">{action}</div>
         </div>
         {children}

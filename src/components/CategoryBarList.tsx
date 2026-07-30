@@ -134,7 +134,13 @@ function StackBar({ slices }: { slices: Slice[] }) {
 
   return (
     <div
-      className="mt-3 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-surface-3 transition-opacity duration-500"
+      /*
+        스택 바와 아래 항목 막대는 다른 정보다 — 전체 대비 비중 / 최댓값 대비 순위.
+        그런데 둘이 같은 두께·같은 색이라, 한 항목이 지배적일 때(식비 98%) 길이까지
+        같아져 같은 것을 두 번 그린 것처럼 보였다. 두께를 6px 대 4px 로 벌려
+        어느 쪽이 요약인지 먼저 읽히게 한다.
+      */
+      className="mt-3 flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-surface-3 transition-opacity duration-500"
       style={{ opacity: grown ? 1 : 0 }}
       aria-hidden
     >
@@ -201,11 +207,16 @@ function BarList({
                 </span>
               </div>
 
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-surface-3">
                 <div
                   className="h-full rounded-full transition-[width] duration-700 ease-out"
                   style={{
-                    width: grown ? `${(s.total / max) * 100}%` : '0%',
+                    /*
+                      최소 폭을 둔다. 2% 항목은 폭이 높이보다 작아져서 rounded-full 이
+                      막대가 아니라 **점**으로 보였다 — 순위를 읽는 장치인데 길이를
+                      비교할 수 없다. 3% 는 6px 남짓으로, 가장 짧은 막대도 막대로 읽힌다.
+                    */
+                    width: grown ? `${Math.max(3, (s.total / max) * 100)}%` : '0%',
                     backgroundColor: s.color,
                     transitionDelay: `${i * 40}ms`,
                   }}
