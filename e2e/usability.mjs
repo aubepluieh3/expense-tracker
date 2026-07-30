@@ -180,7 +180,7 @@ await page.getByRole('button', { name: '필터', exact: true }).click()
 
 console.log('\n── 통계')
 await page.getByRole('link', { name: /통계/ }).click()
-await page.waitForSelector('text=앱 사용 이후 누적', { timeout: 20000 })
+await page.waitForSelector('text=이번 달 지출', { timeout: 20000 })
 await page.waitForTimeout(1300)
 await page.screenshot({ path: join(SHOTS, 'ux-05-stats.png') })
 const statsText = await page.locator('section').first().innerText()
