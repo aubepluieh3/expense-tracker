@@ -41,9 +41,11 @@ const QUERIES = {
   // 거래를 넣으면 순서가 바뀌고, 카테고리를 지우면 목록에서 빠져야 한다
   recentCategories: def('recent-categories', ['transaction', 'category']),
 
-  // 거래 행이 카테고리 이름·이모지를 쓴다
+  // 거래 행이 카테고리 이름·이모지를 쓴다 — 쿼리가 임베드로 함께 가져온다
   transactions: def('transactions', ['transaction', 'category']),
-  transaction: def('transaction', ['transaction']),
+  // 단건도 같은 SELECT 를 쓰므로 이름을 싣는다. 지금 그 이름을 화면에 쓰는 곳은
+  // 없지만, 없다고 빼 두면 쓰기 시작한 사람이 낡은 값을 보고도 이유를 못 찾는다.
+  transaction: def('transaction', ['transaction', 'category']),
 
   transactionCount: def('transaction-count', ['transaction', 'category']),
 

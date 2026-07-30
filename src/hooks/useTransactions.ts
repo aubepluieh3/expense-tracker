@@ -12,7 +12,27 @@ export type TransactionListItem = {
   occurred_on: string
   memo: string | null
   created_at: string
+  /**
+   * 행과 함께 오는 카테고리 이름.
+   *
+   * null 이 아니다 — category_id 가 NOT NULL 이고 FK 가 on delete restrict 라
+   * 거래가 참조하는 카테고리 행은 지워질 수 없다 (0001_init.sql).
+   */
+  categories: { name: string; emoji: string }
 }
+
+/**
+ * 이름을 행과 함께 가져온다.
+ *
+ * 예전에는 거래와 카테고리를 따로 조회해 클라이언트에서 맞췄다. 그래서 카테고리
+ * 쪽이 늦거나 실패하면 목록의 모든 행이 "알 수 없음 · 📦" 으로 보였다 — 그건
+ * 삭제된 카테고리를 위한 문구라, 방금 적은 거래가 망가진 것처럼 읽혔다.
+ *
+ * FK 가 복합키(category_id, user_id, type)인데도 PostgREST 가 관계를 자동으로
+ * 찾는다. 실제로 확인하고 넣었다.
+ */
+const SELECT =
+  'id, category_id, type, amount, occurred_on, memo, created_at, categories(name, emoji)'
 
 /** 등록·수정이 공유하는 입력 모양. 이 파일 안에서만 쓴다. */
 type TransactionInput = {
@@ -37,7 +57,7 @@ export function useMonthTransactions(month: Month) {
       const { start, end } = monthRange(month)
       const { data, error } = await supabase
         .from('transactions')
-        .select('id, category_id, type, amount, occurred_on, memo, created_at')
+        .select(SELECT)
         .gte('occurred_on', start)
         .lt('occurred_on', end)
         .order('occurred_on', { ascending: false })
@@ -59,7 +79,7 @@ export function useTransaction(id: string | null) {
       if (!id) throw new Error('거래 id 가 없습니다')
       const { data, error } = await supabase
         .from('transactions')
-        .select('id, category_id, type, amount, occurred_on, memo, created_at')
+        .select(SELECT)
         .eq('id', id)
         .single()
       if (error) throw error

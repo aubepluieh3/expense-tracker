@@ -268,7 +268,6 @@ export default function Transactions() {
             date={date}
             items={items}
             upcoming={date > todayIso}
-            categoryById={categoryById}
             onSelect={(id) => patchParams({ edit: id }, { push: true })}
           />
         ))}
