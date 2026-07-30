@@ -63,6 +63,8 @@ const QUERIES = {
   salaryWidget: def('salary-widget', ['transaction', 'category']),
   // 위젯이 빈 이유를 가르는 조회 — 지급일이 아직 오지 않은 급여가 있는가
   upcomingSalary: def('upcoming-salary', ['transaction', 'category']),
+  // 같은 목적의 마지막 조회 — 급여가 지정 밖의 수입 카테고리에 들어 있는가
+  incomeOutsideSalary: def('income-outside-salary', ['transaction', 'category']),
   lifetimeNet: def('lifetime-net', ['transaction']),
 }
 
@@ -90,6 +92,9 @@ export const qk = {
   /** 오늘이 키에 들어간다 — 자정을 넘기면 "미래" 의 기준이 바뀐다. */
   upcomingSalary: (categoryId: string | null, today: string) =>
     [QUERIES.upcomingSalary.prefix, categoryId, today] as const,
+  /** 오늘이 키에 없다 — 이 조회에는 날짜 조건이 없다(과거·미래 수입을 모두 본다). */
+  incomeOutsideSalary: (categoryId: string | null) =>
+    [QUERIES.incomeOutsideSalary.prefix, categoryId] as const,
   lifetimeNet: () => [QUERIES.lifetimeNet.prefix] as const,
 }
 

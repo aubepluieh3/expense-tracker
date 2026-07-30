@@ -1,7 +1,7 @@
 import { TextLink } from '@/components/ui/TextLink'
 import { useCategories } from '@/hooks/useCategories'
 import { useProfile } from '@/hooks/useProfile'
-import { useSalaryWidget, useUpcomingSalary } from '@/hooks/useSummary'
+import { useIncomeOutsideSalary, useSalaryWidget, useUpcomingSalary } from '@/hooks/useSummary'
 import { useToday } from '@/hooks/useToday'
 import { abbrevAmount, formatAmount } from '@/lib/format'
 import { currentMonth, daysBetween, shortDate, type Month } from '@/lib/month'
@@ -42,6 +42,14 @@ export function SalaryWidget({
    * profile 이 오기 전에는 카테고리 id 가 없어 hook 안에서 스스로 멈춘다.
    */
   const upcoming = useUpcomingSalary(profile.data?.salary_category_id ?? null, isSuccess && !data)
+  /**
+   * 그다음 이유 — 급여가 지정 밖의 수입 카테고리에 들어 있는가.
+   * 미래 급여가 아니라고 확인된 뒤에만 묻는다(왕복을 하나씩만 늘린다).
+   */
+  const outside = useIncomeOutsideSalary(
+    profile.data?.salary_category_id ?? null,
+    isSuccess && !data && upcoming.isSuccess && !upcoming.data,
+  )
 
   /**
    * 이번 달에만 보여준다.
@@ -71,9 +79,9 @@ export function SalaryWidget({
   if (isError) return null
 
   /**
-   * 위젯이 빈 이유는 넷이다 — 급여 카테고리 미지정 / 그 카테고리가 삭제됨 /
-   * 급여 거래가 없음 / **등록했지만 지급일이 아직 안 옴**. 안내를 하나로 뭉치면
-   * 링크가 절반의 사용자에게 헛다리다.
+   * 위젯이 빈 이유는 다섯이다 — 급여 카테고리 미지정 / 그 카테고리가 삭제됨 /
+   * 급여 거래가 없음 / **등록했지만 지급일이 아직 안 옴** / **급여가 지정 밖의
+   * 수입 카테고리에 있음**. 안내를 하나로 뭉치면 링크가 절반의 사용자에게 헛다리다.
    *
    * 이전에는 세 경우 모두 카테고리 관리로 보냈다. 그런데 기본 카테고리에 급여가
    * 이미 지정돼 있어서, 첫 사용자의 실제 원인은 대부분 "급여 거래를 안 넣음"이다.
@@ -108,7 +116,8 @@ export function SalaryWidget({
     if (profile.isError || categories.isError) return null
 
     const salaryId = profile.data?.salary_category_id
-    const designated = !!salaryId && (categories.data ?? []).some((c) => c.id === salaryId)
+    // 이름까지 찾아 둔다 — 아래에서 "지금 기준이 무엇인지" 를 말해야 한다.
+    const designated = salaryId ? (categories.data ?? []).find((c) => c.id === salaryId) : undefined
 
     /*
       문구가 "남은 금액을 보여드려요" 가 아니다. 대표 자리에 이미 남은 금액이 떠
@@ -121,6 +130,7 @@ export function SalaryWidget({
     const line = 'mt-2 text-caption text-ink-muted'
 
     if (!designated) {
+      // 지정이 없다 — 삭제된 카테고리를 가리키고 있는 경우도 여기로 온다.
       return (
         <p className={line}>
           💼 급여 카테고리를 정하면 월급 기준으로도 보여드려요{' '}
@@ -151,6 +161,30 @@ export function SalaryWidget({
               거래 열기
             </button>
           )}
+        </p>
+      )
+    }
+
+    /*
+      마지막 이유: 급여가 지정 밖의 수입 카테고리에 있다. 위젯은 지정된 한 곳만
+      보므로(0003_summary.sql 의 v_cat) '급여' 에 300만원이 들어 있어도 값을 잃고,
+      그러면 이 화면은 "월급을 등록하면" 이라고 말했다 — 등록은 이미 끝났고
+      어긋난 것은 지정이다. 할 일이 다르면 안내도 달라야 한다.
+
+      여기서도 모르는 동안에는 말하지 않는다. "등록하라" 를 먼저 띄우고 나중에
+      정정하면, 잘못된 지시를 이미 따라간 사람이 생긴다.
+    */
+    if (outside.isPending || outside.isError) return null
+    const elsewhere = outside.data
+    if (elsewhere) {
+      return (
+        <p className={line}>
+          💼 월급 기준이 '{designated.name}' 이에요. '{elsewhere.categories.name}' 로 바꾸면 월급
+          기준으로도 보여드려요{' '}
+          {/* 링크가 줄바꿈에 쪼개지면 "기준 / 바꾸기" 로 갈라져 두 개처럼 보인다. */}
+          <TextLink to="/settings/categories" className="whitespace-nowrap font-normal underline">
+            기준 바꾸기
+          </TextLink>
         </p>
       )
     }
