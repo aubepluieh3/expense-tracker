@@ -249,10 +249,19 @@ export default function Transactions() {
       {salaryPending ? (
         <SalaryWidget month={month} onRecordSalary={openNewSalary} />
       ) : salaryHasHero ? (
-        <>
-          <SalaryWidget month={month} onRecordSalary={openNewSalary} />
-          <MonthSummary month={month} />
-        </>
+        /*
+          월급 위젯이 값을 가지면 이 화면에는 그것만 둔다.
+
+          예전에는 아래에 "7월 남은 금액" 줄을 함께 뒀는데, 같은 화면에 "남은 돈" 이
+          두 개 있는 셈이었다. 기간 축이 다르다는 것을 아는 사람에게만 유용하고,
+          SalaryWidget 의 주석이 실제로 겪은 혼동을 적어 두었다 — "두 숫자가 8만원
+          차이로 겹쳐(위젯은 예정 지출 제외, 월 요약은 포함) 어느 게 내 돈인지
+          물어야 했다."
+
+          이 앱은 월급을 기준으로 도는 가계부다. 그래서 여기는 월급 하나로 두고,
+          달력월 수지는 통계 화면의 '달력월' 축이 맡는다.
+        */
+        <SalaryWidget month={month} onRecordSalary={openNewSalary} />
       ) : (
         <>
           <MonthSummary month={month} variant="hero" />
