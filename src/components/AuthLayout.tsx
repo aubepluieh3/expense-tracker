@@ -19,20 +19,29 @@ export function AuthLayout({
   footer?: React.ReactNode
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[420px] flex-col justify-center px-6 py-12">
+    <main className="mx-auto flex min-h-dvh max-w-[420px] flex-col px-6 py-8">
       {/*
-        앱 이름. 이게 없는 동안 로그인 화면에 있는 글자는 "로그인" 하나뿐이었다 —
-        무엇에 가입하는지 모른 채 이메일과 비밀번호를 넣게 된다. 로그인은 앱을
-        처음 만나는 화면이고, 여기서 이름을 안 말하면 말할 곳이 없다.
+        폼은 남는 공간의 가운데에 두고, 설명서 링크는 화면 바닥에 붙인다.
 
-        제목보다 작게 둔다. 이 화면에서 사용자가 할 일은 로그인이지 브랜드
-        감상이 아니다 — 이름이 제목을 이기면 "로그인" 을 찾는 데 시간이 걸린다.
+        예전에는 main 에 justify-center 를 걸어 전체를 가운데 모았다. 그러면 링크가
+        폼 바로 아래에 붙어 화면 중간에 떠 있고 그 아래로 200px 넘게 비었다 —
+        바닥에 있어야 할 것이 중간에 있으면 자리를 못 찾은 것처럼 보인다.
       */}
-      <p className="text-label font-semibold text-ink-muted">가계부</p>
-      <h1 className="mt-1 text-title font-semibold text-ink">{title}</h1>
-      {description && <p className="mt-2 text-label text-ink-2">{description}</p>}
-      <div className="mt-8">{children}</div>
-      {footer && <div className="mt-6 text-center text-label">{footer}</div>}
+      <div className="flex flex-1 flex-col justify-center">
+        {/*
+          앱 이름. 이게 없는 동안 로그인 화면에 있는 글자는 "로그인" 하나뿐이었다 —
+          무엇에 가입하는지 모른 채 이메일과 비밀번호를 넣게 된다. 로그인은 앱을
+          처음 만나는 화면이고, 여기서 이름을 안 말하면 말할 곳이 없다.
+
+          제목보다 작게 둔다. 이 화면에서 사용자가 할 일은 로그인이지 브랜드
+          감상이 아니다 — 이름이 제목을 이기면 "로그인" 을 찾는 데 시간이 걸린다.
+        */}
+        <p className="text-label font-semibold text-ink-muted">가계부</p>
+        <h1 className="mt-1 text-title font-semibold text-ink">{title}</h1>
+        {description && <p className="mt-2 text-label text-ink-2">{description}</p>}
+        <div className="mt-8">{children}</div>
+        {footer && <div className="mt-6 text-center text-label">{footer}</div>}
+      </div>
 
       {/*
         설명서. 로그인 전 화면에 둔다.
@@ -44,7 +53,7 @@ export function AuthLayout({
         라우터가 다루지 않는 정적 문서라 <Link> 가 아니라 <a> 다. 새 탭으로 연다 —
         입력하던 이메일·비밀번호를 잃지 않는다.
       */}
-      <p className="mt-8 text-center">
+      <p className="pt-10 text-center">
         <a
           href={GUIDE_PATH}
           target="_blank"

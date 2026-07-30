@@ -856,6 +856,117 @@ for (round = 1; round <= ROUNDS; round++) {
     await dlg().waitFor({ state: 'detached', timeout: 10000 })
   })
 
+  /* ── 9. 설명서 목업 ───────────────────────────────────────────────── */
+
+  /*
+    public/guide.html 은 앱 화면을 HTML·CSS 로 재현한다. 값을 앱에서 복사해 온
+    것이라, 앱 스타일을 고치면 손으로 따라가야 하고 잊으면 조용히 낡는다.
+
+    실제로 한 번 낡았다 — 디자인 QA 로 탭 아이콘을 SVG 로 바꾸고 월 네비게이터를
+    재배치했는데 목업은 이모지와 중앙 정렬을 그대로 그리고 있었다. 그 페이지의
+    존재 이유가 "실제 앱을 그대로 재현" 이라, 어긋남 자체가 거짓이 된다.
+
+    그래서 눈에 가장 먼저 닿는 값들을 두 페이지에서 각각 읽어 비교한다.
+    막대 두께까지 본다 — 그것도 이번에 어긋났던 값이다.
+  */
+  await check('설명서', '목업이 앱과 같은 값을 쓴다', async () => {
+    const px = (v) => Math.round(parseFloat(v) || 0)
+
+    await page.goto(`${APP}/`, { waitUntil: 'domcontentloaded' })
+    await page.getByText('월 남은 금액').first().waitFor({ timeout: 20000 })
+    const app = await page.evaluate(() => {
+      const round = (v) => Math.round(v)
+      const nav = document.querySelector('nav')
+      const prev = document.querySelector('[aria-label="이전 달"]').getBoundingClientRect()
+      const label = document.querySelector('[aria-label*="다른 달 선택"]').getBoundingClientRect()
+      const next = document.querySelector('[aria-label="다음 달"]').getBoundingClientRect()
+      const emo = document.querySelector('main li span[aria-hidden]')
+      const h2 = document.querySelector('main h2')
+      return {
+        navSvgs: nav.querySelectorAll('svg').length,
+        navEmoji: /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(nav.innerText),
+        gapL: round(label.left - prev.right),
+        gapR: round(next.left - label.right),
+        emoW: emo ? getComputedStyle(emo).width : null,
+        dayPad: h2 ? getComputedStyle(h2).paddingLeft : null,
+      }
+    })
+
+    await page.goto(`${APP}/stats`, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(3000)
+    const appBars = await page.evaluate(() =>
+      [...document.querySelectorAll('main div.rounded-full.bg-surface-3')].map(
+        (el) => getComputedStyle(el).height,
+      ),
+    )
+
+    await page.goto(`${APP}/guide.html`, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(1500)
+    const guide = await page.evaluate(() => {
+      const round = (v) => Math.round(v)
+      const tabs = document.querySelector('.app-tabs')
+      const nav = document.querySelector('.app-navrow')
+      const arrows = nav.querySelectorAll('.app-arrow')
+      const label = nav.querySelector('.month').getBoundingClientRect()
+      const prev = arrows[0].getBoundingClientRect()
+      const next = arrows[1].getBoundingClientRect()
+      const g = (s) => {
+        const el = document.querySelector(s)
+        return el ? getComputedStyle(el) : null
+      }
+      return {
+        navSvgs: tabs.querySelectorAll('svg').length,
+        navEmoji: /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(tabs.textContent),
+        gapL: round(label.left - prev.right),
+        gapR: round(next.left - label.right),
+        emoW: g('.row .emo')?.width ?? null,
+        dayPad: g('.day-head')?.paddingLeft ?? null,
+        stackH: g('.stack')?.height ?? null,
+        barH: g('.bar-track')?.height ?? null,
+      }
+    })
+
+    expect(
+      guide.navSvgs === app.navSvgs && !guide.navEmoji && !app.navEmoji,
+      `탭 아이콘이 다르다 — 앱 svg ${app.navSvgs}·이모지 ${app.navEmoji} / 목업 svg ${guide.navSvgs}·이모지 ${guide.navEmoji}`,
+    )
+    // 좌우 대칭이 두 쪽 모두에서 지켜지는지. 픽셀 동일까지 요구하지 않는다 —
+    // 목업은 데스크톱 폭 컬럼이고 앱은 지금 모바일 폭이다.
+    for (const [who, v] of [
+      ['앱', app],
+      ['목업', guide],
+    ]) {
+      expect(
+        Math.abs(v.gapL - v.gapR) <= 2,
+        `${who} 의 화살표–라벨 간격이 좌 ${v.gapL}px · 우 ${v.gapR}px 로 어긋남`,
+      )
+    }
+    expect(
+      px(guide.emoW) === px(app.emoW),
+      `이모지 열 폭이 다르다 — 앱 ${app.emoW} / 목업 ${guide.emoW}`,
+    )
+    expect(
+      px(guide.dayPad) === px(app.dayPad),
+      `날짜 헤더 들여쓰기가 다르다 — 앱 ${app.dayPad} / 목업 ${guide.dayPad}`,
+    )
+    // 통계 막대는 앱에 지출이 두 종류 이상일 때만 스택 바가 그려진다.
+    if (appBars.length >= 2) {
+      expect(
+        px(guide.stackH) === px(appBars[0]),
+        `스택 바 두께가 다르다 — 앱 ${appBars[0]} / 목업 ${guide.stackH}`,
+      )
+      expect(
+        px(guide.barH) === px(appBars[1]),
+        `항목 막대 두께가 다르다 — 앱 ${appBars[1]} / 목업 ${guide.barH}`,
+      )
+    }
+
+    // 이 검증은 앱 밖(guide.html)까지 다녀온다. 다음 검증이 설정 화면에서
+    // 시작하므로 원위치로 돌려놓는다 — 안 하면 로그아웃 버튼을 못 찾는다.
+    await page.goto(`${APP}/settings`, { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: '로그아웃' }).waitFor({ timeout: 20000 })
+  })
+
   await check('설정', '로그아웃 → /login', async () => {
     await page.getByRole('button', { name: '로그아웃' }).click()
     await page.waitForURL(/\/login/, { timeout: 20000 })
@@ -957,7 +1068,7 @@ for (round = 1; round <= ROUNDS; round++) {
     }
   })
 
-  /* ── 9. 데스크톱 ──────────────────────────────────────────────────── */
+  /* ── 9. 데스크톱 ─────────────────────────────────────────────────── */
   await page.close()
   const desk = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   // 모바일 페이지와 같은 필터를 쓴다. 여기만 걸러내지 않으면 배포본에서

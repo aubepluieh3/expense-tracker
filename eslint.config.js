@@ -66,7 +66,13 @@ export default tseslint.config(
     files: ['e2e/**/*.mjs'],
     extends: [js.configs.recommended, prettier],
     languageOptions: {
-      globals: globals.node,
+      /*
+        node 와 browser 를 함께 둔다. 이 파일들은 Node 로 실행되지만
+        page.evaluate 의 콜백은 **브라우저 안에서** 실행되므로 document·
+        getComputedStyle 같은 전역을 쓴다. node 만 두면 그 콜백이 전부
+        no-undef 로 잡힌다.
+      */
+      globals: { ...globals.node, ...globals.browser },
     },
   },
 
