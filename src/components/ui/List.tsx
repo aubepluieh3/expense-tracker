@@ -23,10 +23,29 @@ const listClass = 'divide-y divide-line border-y border-line'
  * 낮았던 설정·통계는 이 하한으로 올라오고, 높았던 카테고리 관리는 행 안의
  * 버튼 높이를 맞춰서 내려온다(SubtleButton).
  */
-export const rowClass = 'flex w-full items-center gap-3 py-2.5 min-h-[52px] text-left'
+const rowShapeClass = 'flex items-center gap-3 py-2.5 min-h-[52px] text-left'
 
-/** 행을 누를 수 있을 때 */
-export const rowInteractiveClass = `${rowClass} -mx-1 rounded-control px-1 transition hover:bg-surface-2`
+export const rowClass = `${rowShapeClass} w-full`
+
+/**
+ * 행을 누를 수 있을 때.
+ *
+ * 폭을 `calc(100% + 0.5rem)` 로 준다 — `-mx-1` 을 상쇄하는 값이다. `w-full` 이면
+ * 폭이 컨테이너와 같은 350px 로 고정된 채 왼쪽으로만 4px 밀리므로, 박스가
+ * 오른쪽에서 8px 모자란다. 그 결과가 두 가지로 보였다:
+ *
+ *   - 행 금액의 오른쪽 끝이 362px, 그날 소계는 370px — 오른쪽 열이 계단이 됐다.
+ *     금액을 세로로 훑는 화면에서 그 열이 안 맞으면 자리를 눈으로 다시 찾아야 한다.
+ *   - hover 하이라이트가 왼쪽으로만 4px 삐져나오고 오른쪽은 안쪽으로 들어갔다.
+ *
+ * 음수 마진은 하이라이트를 글자보다 조금 넓게 깔기 위한 것이므로 폭으로 되돌려
+ * 준다 — 그래야 `px-1` 안쪽 내용이 컨테이너 좌우 20px 선에 그대로 선다.
+ *
+ * rowClass 를 이어 쓰지 않고 rowShapeClass 에서 따로 조립한다. 이어 쓰면 `w-full` 과
+ * 이 폭이 한 문자열에 같이 들어가고, 둘 다 width 유틸리티라 어느 쪽이 이기는지는
+ * 클래스 문자열 순서가 아니라 생성된 CSS 순서가 정한다 — 빌드에 따라 조용히 뒤집힌다.
+ */
+export const rowInteractiveClass = `${rowShapeClass} -mx-1 w-[calc(100%+0.5rem)] rounded-control px-1 transition hover:bg-surface-2`
 
 /**
  * 행 좌측 이모지.
