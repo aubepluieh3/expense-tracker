@@ -589,8 +589,22 @@ for (round = 1; round <= ROUNDS; round++) {
       .first()
       .click()
     await dlg().waitFor({ timeout: 15000 })
+
+    /**
+     * 기본값은 이제 보고 있는 달 안이다(clampToMonth) — 그래서 "다른 달로 저장"을
+     * 기본값에 기대면 성립하지 않는다. [오늘] 을 눌러 일부러 이 달을 벗어난다.
+     *
+     * 처음에는 기본값이 오늘(다른 달)인 것에 기대어 썼는데, 기본값이 바뀌자
+     * 3/3 으로 깨졌다. 검증이 우연한 기본값에 기대고 있었다는 뜻이다.
+     */
+    const defaultDate = await dlg().locator('input[type="date"]').inputValue()
+    expect(
+      defaultDate.startsWith(viewed),
+      `기본값이 보고 있는 달 안이어야 한다: 보는 달 ${viewed} · 기본값 ${defaultDate}`,
+    )
+    await dlg().getByRole('button', { name: '오늘' }).click()
     const sheetDate = await dlg().locator('input[type="date"]').inputValue()
-    expect(!sheetDate.startsWith(viewed), `이 검증은 시트 날짜가 다른 달일 때만 성립: ${sheetDate}`)
+    expect(!sheetDate.startsWith(viewed), `[오늘] 을 눌렀는데도 보고 있는 달 안이다: ${sheetDate}`)
     await chip(/^교통/).click()
     await dlg().getByPlaceholder('0').fill('1234')
     await dlg().getByPlaceholder('선택').fill('다른달 저장')

@@ -14,7 +14,7 @@ import {
 import { useProfile } from '@/hooks/useProfile'
 import { useToday } from '@/hooks/useToday'
 import { digitsOnly, formatAmount } from '@/lib/format'
-import { addDays, relativeDayLabel, today } from '@/lib/month'
+import { addDays, clampToMonth, relativeDayLabel, today, type Month } from '@/lib/month'
 import type { CategoryType } from '@/types/database'
 
 /**
@@ -59,6 +59,7 @@ export function TransactionFormSheet({
   onClose,
   onSaved,
   onDeleted,
+  month,
 }: {
   initial?: TransactionListItem
   /**
@@ -84,6 +85,12 @@ export function TransactionFormSheet({
    * 스낵바는 시트가 닫힌 뒤에도 남아야 하므로 이 컴포넌트가 가질 수 없다.
    */
   onDeleted?: (item: TransactionListItem) => void
+  /**
+   * 지금 보고 있는 달. 날짜 기본값을 이 달 안으로 맞추는 데만 쓴다.
+   *
+   * 없으면 오늘을 쓴다 — 달 개념이 없는 화면에서 열 수도 있으므로 필수로 두지 않는다.
+   */
+  month?: Month
 }) {
   const isEdit = !!initial
 
@@ -92,7 +99,26 @@ export function TransactionFormSheet({
   )
   const [categoryId, setCategoryId] = useState<string | null>(initial?.category_id ?? null)
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
-  const [occurredOn, setOccurredOn] = useState(initial?.occurred_on ?? carriedDate ?? today())
+  /**
+   * 날짜 기본값. 세 단계로 정한다.
+   *
+   *   ① 수정 중이면 그 거래의 날짜
+   *   ② 직전에 저장한 날짜가 보고 있는 달 안이면 그것 — 그 달 몰아 적기가 이어진다
+   *   ③ 오늘을 보고 있는 달 안으로 밀어 넣은 값
+   *
+   * ③ 이 필요한 이유: 7월에 6월을 보는 중 ＋ 를 누르면 기본값이 오늘(7월)이라
+   * 달력을 열어 달부터 고쳐야 했다. 일자는 어차피 바꾸지만 달이 틀리면 그 한
+   * 단계가 더 붙는다. 오늘이 아니게 되면 아래 경고 줄이 그 사실을 알려 준다.
+   *
+   * ② 에 달 검사가 붙는 이유: 6월을 보는데 직전 저장이 7월이면 물려받은 값이
+   * 보고 있는 달과 싸운다.
+   */
+  const [occurredOn, setOccurredOn] = useState(() => {
+    if (initial) return initial.occurred_on
+    const base = month ? clampToMonth(today(), month) : today()
+    if (!carriedDate) return base
+    return !month || carriedDate.startsWith(month) ? carriedDate : base
+  })
   /**
    * 시트를 연 시점의 날짜. dirty 판정 기준이다.
    * today() 와 비교하면 물려받은 날짜 때문에 열자마자 "작성 중"으로 판정돼서,

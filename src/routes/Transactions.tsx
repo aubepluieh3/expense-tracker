@@ -360,6 +360,7 @@ export default function Transactions() {
           start={newParam === 'salary' ? 'salary' : newParam === 'income' ? 'income' : 'expense'}
           onClose={() => patchParams({ new: null })}
           onSaved={(iso) => closeAfterSave('new', iso)}
+          month={month}
         />
       )}
       {editId && editItem && (
@@ -368,6 +369,7 @@ export default function Transactions() {
           onClose={() => patchParams({ edit: null })}
           onSaved={(iso) => closeAfterSave('edit', iso)}
           onDeleted={deleteWithUndo}
+          month={month}
         />
       )}
       {/* FAB 위에 뜨도록 시트들과 같은 층에 둔다. */}

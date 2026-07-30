@@ -39,6 +39,28 @@ export function shiftMonth(month: Month, delta: number): Month {
   return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`
 }
 
+/**
+ * 날짜를 그 달 안으로 밀어 넣는다. 이미 그 달이면 그대로.
+ *
+ *   clampToMonth('2026-07-30', '2026-07')  → '2026-07-30'   (그대로)
+ *   clampToMonth('2026-07-30', '2026-06')  → '2026-06-30'   (말일)
+ *   clampToMonth('2026-07-30', '2026-09')  → '2026-09-01'   (1일)
+ *
+ * 등록 시트의 날짜 기본값에 쓴다. 6월을 보는 중에 ＋ 를 누르면 기본값이 오늘(7월)
+ * 이라 달력을 열어 달부터 고쳐야 했다. 일자는 어차피 바꾸지만 달이 틀리면
+ * 그 한 단계가 더 붙는다.
+ *
+ * 과거 달은 말일, 미래 달은 1일이 되는데 분기가 아니라 같은 식의 결과다 —
+ * "그 달에서 오늘에 가장 가까운 날" 하나의 규칙이다. 목록이 날짜 내림차순이라
+ * 과거 달의 가장 최근 지점이 말일인 것도 맞는다.
+ */
+export function clampToMonth(iso: string, month: Month): string {
+  const { start, end } = monthRange(month)
+  if (iso < start) return start
+  const last = addDays(end, -1) // end 는 다음 달 1일(미포함)
+  return iso > last ? last : iso
+}
+
 /** 조회 조건용 반열린 구간 [start, end). BETWEEN 을 쓰면 말일 경계에서 실수한다. */
 export function monthRange(month: Month): { start: string; end: string } {
   return { start: `${month}-01`, end: `${shiftMonth(month, 1)}-01` }
