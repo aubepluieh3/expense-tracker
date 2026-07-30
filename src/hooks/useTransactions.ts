@@ -68,6 +68,36 @@ export function useMonthTransactions(month: Month) {
   })
 }
 
+/**
+ * 임의 날짜 범위. 월급 주기 통계가 쓴다.
+ *
+ * 급여일은 달력월 경계와 무관하므로(7.10 ~ 8.9) 월 단위 조회로는 담을 수 없다.
+ * 그런데 이 조회는 RPC 가 아니라 테이블 직접 조회라 범위를 그대로 넣을 수 있다 —
+ * 월 요약·카테고리 통계는 RPC(달력월 고정)이지만, 그 계산은 합계와 그룹핑뿐이라
+ * 여기서 가져온 거래로 클라이언트가 대신 할 수 있다. 그래서 마이그레이션이 필요
+ * 없다: SQL 을 손으로 돌리는 단계가 배포와 어긋날 여지를 만든다.
+ *
+ * end 는 미포함이다 — monthRange 와 같은 규칙(반열린 구간)이라 경계 실수가 준다.
+ */
+export function useRangeTransactions(start: string | null, end: string | null) {
+  return useQuery({
+    queryKey: qk.rangeTransactions(start, end),
+    enabled: !!start && !!end,
+    queryFn: async (): Promise<TransactionListItem[]> => {
+      if (!start || !end) throw new Error('범위가 없습니다')
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(SELECT)
+        .gte('occurred_on', start)
+        .lt('occurred_on', end)
+        .order('occurred_on', { ascending: false })
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data
+    },
+  })
+}
+
 export function useTransaction(id: string | null) {
   return useQuery({
     // qk.transaction 이 null 을 받는다. '' 로 바꿔 넘기면 lib/queryKeys.ts 가

@@ -11,6 +11,7 @@ import {
   useUpdateTransaction,
   type TransactionListItem,
 } from '@/hooks/useTransactions'
+import { useProfile } from '@/hooks/useProfile'
 import { useToday } from '@/hooks/useToday'
 import { digitsOnly, formatAmount } from '@/lib/format'
 import { addDays, relativeDayLabel, today } from '@/lib/month'
@@ -54,11 +55,23 @@ const AMOUNT_DIGITS = 9
  */
 export function TransactionFormSheet({
   initial,
+  start = 'expense',
   onClose,
   onSaved,
   onDeleted,
 }: {
   initial?: TransactionListItem
+  /**
+   * 무엇을 적으러 왔는가. 수정할 때는 initial 이 이긴다.
+   *
+   *   expense  기본 — 거래의 대부분이 지출이다 (FAB · ＋추가)
+   *   income   수입 탭으로 시작
+   *   salary   수입 탭 + 급여 카테고리까지 미리 고른다
+   *
+   * salary 가 필요한 이유: 월급 안내의 "등록하기" 는 무엇을 적을지가 이미 정해진
+   * 경로다. 그런데도 수입 탭과 급여 칩을 손으로 두 번 더 눌러야 했다.
+   */
+  start?: 'expense' | 'income' | 'salary'
   onClose: () => void
   /**
    * 저장 성공 시 닫기 대신 이걸 부른다. 저장된 날짜를 넘기는 이유는 호출부가
@@ -74,7 +87,9 @@ export function TransactionFormSheet({
 }) {
   const isEdit = !!initial
 
-  const [type, setType] = useState<CategoryType>(initial?.type ?? 'expense')
+  const [type, setType] = useState<CategoryType>(
+    initial?.type ?? (start === 'expense' ? 'expense' : 'income'),
+  )
   const [categoryId, setCategoryId] = useState<string | null>(initial?.category_id ?? null)
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
   const [occurredOn, setOccurredOn] = useState(initial?.occurred_on ?? carriedDate ?? today())
@@ -105,6 +120,7 @@ export function TransactionFormSheet({
   const active = useCategories()
   const all = useAllCategories()
   const recentIds = useRecentCategoryIds()
+  const profile = useProfile()
   const create = useCreateTransaction()
   const update = useUpdateTransaction()
   const remove = useDeleteTransaction()
@@ -117,6 +133,31 @@ export function TransactionFormSheet({
     const orphan = all.data?.find((c) => c.id === categoryId)
     return orphan && orphan.type === type ? [...list, orphan] : list
   }, [active.data, all.data, type, categoryId])
+
+  /**
+   * 급여 칩을 미리 고른다. start='salary' 로 열렸고, 사용자가 아직 아무것도
+   * 고르지 않았을 때만.
+   *
+   * 상태 초기값으로 넣지 않고 파생값으로 둔다 — 시트가 열리는 순간에는 profile 이
+   * 아직 안 왔을 수 있어서, useState 로 잡으면 null 로 굳는다. 파생값이면 프로필이
+   * 도착한 그 순간부터 자연히 선택된 상태가 된다.
+   *
+   * 수입 탭에서만 적용한다. 급여는 수입 카테고리라 지출로 저장하면 복합 FK 가
+   * 거부한다(0001_init.sql — 타입 일치를 FK 가 강제한다).
+   *
+   * 활성 목록에 있을 때만 고른다. 삭제된 카테고리를 미리 골라 주면 사용자가
+   * 지운 것을 모르고 다시 쓰게 된다.
+   */
+  const salaryId = profile.data?.salary_category_id ?? null
+  const autoSalaryId =
+    start === 'salary' &&
+    !isEdit &&
+    type === 'income' &&
+    (active.data ?? []).some((c) => c.id === salaryId && c.type === 'income')
+      ? salaryId
+      : null
+  /** 화면과 저장에 쓰는 최종 선택. 사용자의 선택이 자동 선택을 이긴다. */
+  const selectedCategoryId = categoryId ?? autoSalaryId
 
   /**
    * 그리드 위에 따로 붙는 "최근" 줄. 최근 사용순 id 를 이번 타입의 칩과 교집합한다.
@@ -160,11 +201,11 @@ export function TransactionFormSheet({
     setError('')
 
     const value = Number(amount)
-    if (!categoryId) return setError('카테고리를 선택해 주세요')
+    if (!selectedCategoryId) return setError('카테고리를 선택해 주세요')
     if (!Number.isFinite(value) || value <= 0) return setError('금액을 입력해 주세요')
 
     const payload = {
-      category_id: categoryId,
+      category_id: selectedCategoryId,
       type,
       amount: value,
       occurred_on: occurredOn,
@@ -280,7 +321,7 @@ export function TransactionFormSheet({
           categories={chips}
           type={type}
           recent={recent}
-          value={categoryId}
+          value={selectedCategoryId}
           onChange={setCategoryId}
           pending={active.isPending}
           error={active.isError}

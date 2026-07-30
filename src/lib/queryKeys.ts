@@ -43,6 +43,13 @@ const QUERIES = {
 
   // 거래 행이 카테고리 이름·이모지를 쓴다 — 쿼리가 임베드로 함께 가져온다
   transactions: def('transactions', ['transaction', 'category']),
+  /*
+    임의 날짜 범위. 월급 주기 통계가 쓴다 — 급여일은 달력월 경계와 무관하다.
+    같은 prefix 를 쓰지 않는 이유는 무효화 범위가 아니라 키 충돌이다:
+    ['transactions', '2026-07'] 과 ['transactions', '2026-07-10', '2026-08-10'] 이
+    부분 일치로 서로를 건드린다.
+  */
+  rangeTransactions: def('range-transactions', ['transaction', 'category']),
   // 단건도 같은 SELECT 를 쓰므로 이름을 싣는다. 지금 그 이름을 화면에 쓰는 곳은
   // 없지만, 없다고 빼 두면 쓰기 시작한 사람이 낡은 값을 보고도 이유를 못 찾는다.
   transaction: def('transaction', ['transaction', 'category']),
@@ -70,6 +77,9 @@ export const qk = {
   profile: () => [QUERIES.profile.prefix] as const,
   recentCategories: () => [QUERIES.recentCategories.prefix] as const,
   transactions: (month: Month) => [QUERIES.transactions.prefix, month] as const,
+  /** end 는 미포함(exclusive). null 이면 enabled:false 로 실행되지 않는다. */
+  rangeTransactions: (start: string | null, end: string | null) =>
+    [QUERIES.rangeTransactions.prefix, start, end] as const,
   /** id 가 null 이면 enabled:false 로 실행되지 않는다. 가짜 sentinel 을 만들지 않는다. */
   transaction: (id: string | null) => [QUERIES.transaction.prefix, id] as const,
   transactionCount: (categoryId: string | null) =>

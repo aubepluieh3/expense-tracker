@@ -290,9 +290,49 @@ for (round = 1; round <= ROUNDS; round++) {
     },
   )
 
-  await check('빈 상태', '월급 안내의 "등록하기" 가 시트를 연다', async () => {
+  /*
+    무엇을 적을지가 이미 정해진 경로다. 그런데도 수입 탭과 급여 칩을 손으로 두 번
+    더 눌러야 했다 — 이 앱의 설계 목표가 "탭 수 최소화" 인데(TransactionFormSheet)
+    가장 목적이 분명한 경로가 가장 많이 눌러야 했던 셈이다.
+  */
+  await check('빈 상태', '월급 안내의 "등록하기" → 수입 탭 + 급여 칩까지 선택', async () => {
     await page.getByRole('button', { name: '등록하기' }).click()
     await dlg().waitFor({ timeout: 15000 })
+    expect(
+      (await dlg()
+        .getByRole('radio', { name: '수입', exact: true })
+        .getAttribute('aria-checked')) === 'true',
+      '수입 탭이 선택돼 있지 않다',
+    )
+    await chip(/^급여/).waitFor({ timeout: 10000 })
+    expect(
+      (await chip(/^급여/).getAttribute('aria-pressed')) === 'true',
+      '급여 칩이 선택돼 있지 않다',
+    )
+    // 지출로 바꾸면 자동 선택이 풀려야 한다 — 급여는 수입 카테고리라
+    // 지출로 저장하면 복합 FK 가 거부한다(0001_init.sql).
+    await dlg().getByRole('radio', { name: '지출', exact: true }).click()
+    await waitUntil(
+      async () => (await grid().getByRole('button', { pressed: true }).count()) === 0,
+      '지출로 바꿨는데 선택된 칩이 남아 있다',
+    )
+    await dlg().getByRole('button', { name: '닫기' }).click()
+    await dlg().waitFor({ state: 'detached', timeout: 10000 })
+  })
+
+  await check('빈 상태', 'FAB 은 지출로 시작하고 아무 칩도 고르지 않는다', async () => {
+    await page.getByRole('button', { name: '거래 추가' }).click()
+    await dlg().waitFor({ timeout: 15000 })
+    expect(
+      (await dlg()
+        .getByRole('radio', { name: '지출', exact: true })
+        .getAttribute('aria-checked')) === 'true',
+      'FAB 이 지출로 시작하지 않는다',
+    )
+    expect(
+      (await grid().getByRole('button', { pressed: true }).count()) === 0,
+      'FAB 으로 열었는데 칩이 미리 선택돼 있다',
+    )
     await dlg().getByRole('button', { name: '닫기' }).click()
     await dlg().waitFor({ state: 'detached', timeout: 10000 })
   })
@@ -643,6 +683,81 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.getByText('2,500,000').first().waitFor({ timeout: 15000 })
   })
 
+  /*
+    급여가 있으면 이 화면에는 월급 하나만 둔다. 예전에는 아래에 달력월 요약을 함께
+    뒀는데 같은 화면에 "남은 돈" 이 두 개인 셈이었다 — 두 숫자가 겹쳐 어느 게 내
+    돈인지 물어야 했다(기획서 §3.5). 달력월 수지는 통계의 달력월 축이 맡는다.
+  */
+  await check('위젯', '급여가 있으면 내역 상단은 월급 하나뿐', async () => {
+    await page.getByText('월급 남은 돈').waitFor({ timeout: 15000 })
+    expect(
+      (await page.getByText(/월 남은 금액/).count()) === 0,
+      '월급 위젯과 달력월 요약이 함께 떠 있다',
+    )
+  })
+
+  /*
+    이 앱의 첫 질문은 "이번 월급 얼마 남았지?" 인데 통계에는 월급이 한 글자도 없었다.
+    축을 바꾸지 않고 고를 수 있게 했다 — 두 축의 숫자가 서로 어긋나지 않는 것이
+    핵심이다. 주기 합계는 월급 위젯의 spent_since 와 같은 범위를 쓴다.
+  */
+  await check('통계', '기간 축 — 달력월과 월급 주기가 서로 다른 범위를 센다', async () => {
+    await page.getByRole('link', { name: /통계/ }).click()
+    await page.getByRole('radio', { name: '달력월' }).waitFor({ timeout: 20000 })
+
+    /*
+      라벨은 조회가 끝나기 전에도 자리를 잡는다(대표 숫자만 스켈레톤이다). 라벨이
+      보이자마자 읽으면 아직 숫자가 없어 null 이 나온다 — 값이 채워질 때까지 기다린다.
+    */
+    const heroOf = async (label) => {
+      let value = null
+      await waitUntil(async () => {
+        const t = await page.evaluate(() => document.body.innerText)
+        const m = t.match(new RegExp(`${label}\\s*\\n?\\s*([\\d,]+)원`))
+        value = m ? Number(m[1].replace(/,/g, '')) : null
+        return value !== null
+      }, 20000)
+      return value
+    }
+    const monthTotal = await heroOf('이번 달 지출')
+    expect(monthTotal !== null && monthTotal > 0, `달력월 지출을 못 읽었다 (${monthTotal})`)
+    // 달력월 축에는 수입·남은 금액 근거가 함께 있어야 한다 — 내역에서 뺐으므로.
+    await page.getByText(/월 남은 금액/).waitFor({ timeout: 10000 })
+
+    await page.getByRole('radio', { name: '월급 주기' }).click()
+    await page.getByText('이 주기에 쓴 돈').waitFor({ timeout: 15000 })
+    expect(new URL(page.url()).searchParams.get('axis') === 'salary', 'URL 에 axis=salary 가 없다')
+    // 내용과 토글이 어긋나면(주기를 보여주면서 달력월이 선택된 얼굴) 축을 못 믿는다
+    expect(
+      (await page.getByRole('radio', { name: '월급 주기' }).getAttribute('aria-checked')) ===
+        'true',
+      '주기를 보여주는데 월급 주기가 선택돼 있지 않다',
+    )
+    // 이 축의 기간은 하나뿐이라 달 이동이 없어야 한다
+    expect(
+      (await page.getByRole('button', { name: /\d{4}년 \d+월/ }).count()) === 0,
+      '월급 주기인데 달 네비게이터가 남아 있다',
+    )
+
+    const cycleTotal = await heroOf('이 주기에 쓴 돈')
+    expect(cycleTotal !== null, '주기 지출을 못 읽었다')
+    /*
+      급여일 전 지출은 주기에서 빠진다. 이 흐름은 급여를 오늘 날짜로 등록하므로
+      주기 지출 ≤ 달력월 지출이고, 급여일보다 앞선 거래가 있으면 더 작다.
+      같아도 정상이다(그 달 지출이 전부 급여일 이후일 때).
+    */
+    expect(
+      cycleTotal <= monthTotal,
+      `주기 지출(${cycleTotal})이 달력월 지출(${monthTotal})보다 크다`,
+    )
+
+    await page.getByRole('radio', { name: '달력월' }).click()
+    await page.getByText('이번 달 지출').waitFor({ timeout: 15000 })
+    expect(!new URL(page.url()).searchParams.get('axis'), '달력월로 돌아왔는데 axis 가 남아 있다')
+    await page.getByRole('link', { name: /내역/ }).click()
+    await page.getByText('월급 남은 돈').waitFor({ timeout: 20000 })
+  })
+
   await check('위젯', '미래 지출 → 예정 배지 + 위젯의 예정 표시', async () => {
     if (!hasFutureDay) skip('오늘이 이 달 마지막 날 — 이 달 안에 미래 날짜가 없다')
     const future = futureInMonth
@@ -692,7 +807,22 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.getByRole('link', { name: /통계/ }).click()
     await page.getByText('이번 달 지출').waitFor({ timeout: 20000 })
     await page.getByText('앱 사용 이후 누적').waitFor({ timeout: 15000 })
-    await page.getByText('+2,492,000').waitFor({ timeout: 15000 })
+    /*
+      금액만으로 찾으면 안 된다 — 이 흐름의 거래가 전부 이번 달이라 달력월 "남은 금액"
+      과 누적이 같은 값이고, getByText 가 두 곳에 걸린다. 라벨에 붙은 값을 읽는다.
+    */
+    let net = null
+    try {
+      await waitUntil(async () => {
+        const t = await page.evaluate(() => document.body.innerText)
+        net = t.match(/앱 사용 이후 누적\s*\n?\s*([+−-][\d,]+)원/)?.[1] ?? null
+        return net === '+2,492,000'
+      }, 15000)
+    } catch {
+      // 값이 온다/안 온다가 아니라 "무엇이 보였는지" 를 남긴다. 이 화면은 다시 들어올 때
+      // 캐시를 먼저 보여주고 뒤에서 다시 조회하므로, 낡은 값이 잠깐 보이는 것은 정상이다.
+      expect(false, `누적이 +2,492,000 이 아니다 (${net})`)
+    }
   })
 
   await check('통계', '막대 탭 → 필터된 내역으로 드릴다운', async () => {

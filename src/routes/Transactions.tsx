@@ -37,7 +37,18 @@ export default function Transactions() {
 
   const typeFilter = params.get('type') as CategoryType | null
   const categoryFilter = params.get('category')
-  const isNew = params.get('new') === '1'
+  /**
+   * 등록 시트를 여는 파라미터. 값이 타입을 함께 나른다.
+   *
+   *   new=1        지출로 시작 (FAB · ＋추가 — 거래의 대부분이 지출이다)
+   *   new=income   수입 탭으로 시작
+   *   new=salary   수입 탭 + 급여 칩까지 미리 선택 (월급 안내의 "등록하기")
+   *
+   * `type` 을 쓰지 않는다 — 그건 이 화면의 필터 파라미터라, 시트를 여는 데 쓰면
+   * 목록까지 걸러진다. 1 을 계속 받는 이유는 기존 링크·검증이 그걸 쓰기 때문이다.
+   */
+  const newParam = params.get('new')
+  const isNew = ['1', 'expense', 'income', 'salary'].includes(newParam ?? '')
   const editId = params.get('edit')
 
   const tx = useMonthTransactions(month)
@@ -112,6 +123,11 @@ export default function Transactions() {
   }
 
   const openNew = () => patchParams({ new: '1' }, { push: true })
+  /**
+   * 급여를 적으러 온 경로. 타입과 카테고리가 이미 정해져 있으므로 둘 다 미리 고른다 —
+   * 여기 온 사람이 지출이나 용돈을 적을 일은 없다.
+   */
+  const openNewSalary = () => patchParams({ new: 'salary' }, { push: true })
 
   /**
    * 저장한 거래가 지금 보는 달에 없으면 그 달로 옮긴다.
@@ -231,18 +247,27 @@ export default function Transactions() {
         배치가 통째로 바뀌어 화면이 한 번 튄다.
       */}
       {salaryPending ? (
-        <SalaryWidget month={month} onRecordSalary={openNew} />
+        <SalaryWidget month={month} onRecordSalary={openNewSalary} />
       ) : salaryHasHero ? (
-        <>
-          <SalaryWidget month={month} onRecordSalary={openNew} />
-          <MonthSummary month={month} />
-        </>
+        /*
+          월급 위젯이 값을 가지면 이 화면에는 그것만 둔다.
+
+          예전에는 아래에 "7월 남은 금액" 줄을 함께 뒀는데, 같은 화면에 "남은 돈" 이
+          두 개 있는 셈이었다. 기간 축이 다르다는 것을 아는 사람에게만 유용하고,
+          SalaryWidget 의 주석이 실제로 겪은 혼동을 적어 두었다 — "두 숫자가 8만원
+          차이로 겹쳐(위젯은 예정 지출 제외, 월 요약은 포함) 어느 게 내 돈인지
+          물어야 했다."
+
+          이 앱은 월급을 기준으로 도는 가계부다. 그래서 여기는 월급 하나로 두고,
+          달력월 수지는 통계 화면의 '달력월' 축이 맡는다.
+        */
+        <SalaryWidget month={month} onRecordSalary={openNewSalary} />
       ) : (
         <>
           <MonthSummary month={month} variant="hero" />
           <SalaryWidget
             month={month}
-            onRecordSalary={openNew}
+            onRecordSalary={openNewSalary}
             onOpenTransaction={(id) => patchParams({ edit: id }, { push: true })}
           />
         </>
@@ -332,6 +357,7 @@ export default function Transactions() {
 
       {isNew && (
         <TransactionFormSheet
+          start={newParam === 'salary' ? 'salary' : newParam === 'income' ? 'income' : 'expense'}
           onClose={() => patchParams({ new: null })}
           onSaved={(iso) => closeAfterSave('new', iso)}
         />
