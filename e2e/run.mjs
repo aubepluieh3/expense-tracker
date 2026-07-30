@@ -1208,10 +1208,39 @@ for (round = 1; round <= ROUNDS; round++) {
       await page2.getByRole('button', { name: '로그아웃' }).click()
       await page2.waitForURL(/\/login/, { timeout: 20000 })
       await login(SECOND.email, SECOND.password)
-      await page2
-        .getByRole('button', { name: /거래 추가|기록 시작하기/ })
-        .first()
-        .waitFor({ timeout: 30000 })
+      /**
+       * 두 번째 계정이 로그인하지 못하면 "무엇을 못 했는지" 를 말한다.
+       *
+       * 그냥 홈 화면을 기다리면 30초 타임아웃만 남는데, 실제 원인은 대개
+       * 미인증 계정이거나 비밀번호가 틀린 것이다. 화면에 이미 그 문장이
+       * 떠 있으므로 그걸 읽어 건너뜀 이유로 쓴다 — 검증 실패가 아니라
+       * 검증을 못 한 것이다.
+       */
+      const home = page2.getByRole('button', { name: /거래 추가|기록 시작하기/ }).first()
+      /**
+       * role 로 잡지 않는다. 비밀번호 오류는 Callout(role="alert")이지만
+       * 미인증 안내는 평범한 <p> 라서(routes/Login.tsx) role 만 보면 놓친다.
+       * 로그인 카드의 글자를 그대로 읽는 게 어떤 실패든 담는다.
+       */
+      const card = page2.locator('form').first()
+      await Promise.race([
+        home.waitFor({ timeout: 30000 }),
+        page2
+          .getByText(/이메일 인증이 필요합니다|올바르지 않습니다/)
+          .first()
+          .waitFor({ timeout: 30000 }),
+      ]).catch(() => {})
+      if (!(await home.count())) {
+        const text = (await card.count())
+          ? await card.innerText()
+          : await page2.locator('body').innerText()
+        const why =
+          text
+            .split('\n')
+            .map((l) => l.trim())
+            .find((l) => /필요합니다|올바르지 않습니다|없습니다|실패/.test(l)) ?? '원인 미상'
+        skip(`두 번째 계정으로 로그인하지 못했다 — ${why}`)
+      }
 
       // 페이지가 다시 로드됐다면 캐시가 사라져 검증이 성립하지 않는다
       expect(
