@@ -1,4 +1,4 @@
-import { rowEmojiClass, rowInteractiveClass, rowNameIndentClass } from '@/components/ui/List'
+import { rowEmojiClass, rowInteractiveClass } from '@/components/ui/List'
 import { formatAmount } from '@/lib/format'
 import { dayLabel } from '@/lib/month'
 import type { TransactionListItem } from '@/hooks/useTransactions'
@@ -27,8 +27,19 @@ export function DayGroup({
   return (
     <div className="mb-3">
       <div className="flex items-baseline justify-between border-b border-line pb-1.5">
-        {/* 행의 이름 열에 맞춘다. 구분선은 그대로 폭 전체를 쓴다 — 그룹의 경계이므로. */}
-        <h2 className={`flex items-center gap-1.5 text-label text-ink-muted ${rowNameIndentClass}`}>
+        {/*
+          컨테이너 왼쪽 선(x=20)에 붙인다.
+
+          한동안 행의 **이름** 열(x=60)에 맞춰 두었다. 이름과는 맞았지만 화면의
+          나머지 전부와 어긋났다 — 월급 위젯 라벨·대표 숫자·행 이모지·바로 아래
+          구분선이 모두 20 이고 날짜만 60 이라, 날짜 앞에 40px 빈 칸이 생기고
+          그 밑의 선은 flush 로 시작했다.
+
+          목록의 왼쪽 끝은 이름이 아니라 이모지다. 이름 열(60)은 아이콘 뒤로 한 단
+          들여쓴 2차 열이므로 헤더가 거기 맞을 이유가 없다. 20 하나로 모으면
+          화면 전체에 왼쪽 선이 하나가 된다.
+        */}
+        <h2 className="flex items-center gap-1.5 text-label text-ink-muted">
           {dayLabel(date)}
           {/* 날짜 내림차순이라 미래 거래가 목록 맨 위에 온다. 월급 위젯은 미래 지출을
               "예정 지출"로 따로 뺐는데 목록에서 섞여 있으면 사용자가 오늘 날짜를

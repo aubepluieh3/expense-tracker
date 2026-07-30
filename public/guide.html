@@ -622,14 +622,17 @@
       }
 
       /*
-        날짜 라벨을 행의 이름 열에 맞춘다 — 이모지 28px + gap 12px = 40px.
-        구분선은 폭 전체를 쓴다: 그룹의 경계이므로.
+        날짜 라벨을 컨테이너 왼쪽 선에 붙인다.
+
+        한동안 행의 이름 열(이모지 28px + gap 12px = 40px)에 맞춰 두었다. 이름과는
+        맞았지만 화면의 나머지 전부와 어긋났다 — 월급 위젯·행 이모지·바로 아래
+        구분선이 모두 0 이고 날짜만 40 이라 날짜 앞에 빈 칸이 생겼다.
+        목록의 왼쪽 끝은 이름이 아니라 이모지다. (components/DayGroup.tsx)
       */
       .day-head {
         display: flex;
         align-items: baseline;
         justify-content: space-between;
-        padding-left: 40px;
         padding-bottom: 6px;
         border-bottom: 1px solid var(--app-line);
         font-size: 14px;

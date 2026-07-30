@@ -50,20 +50,10 @@ export const rowInteractiveClass = `${rowShapeClass} -mx-1 w-[calc(100%+0.5rem)]
 /**
  * 행 좌측 이모지.
  *
- * 폭을 고정한다(28px). 그래야 이름이 시작하는 x 가 이모지 글리프 폭에 의존하지 않고,
- * 그룹 헤더를 그 열에 맞출 수 있다 — 28 + gap-3(12) = 40px 이 이름 열의 들여쓰기다.
- * 아래 rowNameIndentClass 가 그 값을 쓴다.
+ * 폭을 고정한다(28px). 그래야 이름이 시작하는 x 가 이모지 글리프 폭에 의존하지 않고
+ * 행마다 이름 열이 흔들리지 않는다 — 28 + gap-3(12) = 40px 이 이름 열의 들여쓰기다.
  */
 export const rowEmojiClass = 'w-7 shrink-0 text-center text-lg'
-
-/**
- * 행의 이름이 시작하는 곳에 맞추는 들여쓰기.
- *
- * 날짜 그룹 헤더가 컨테이너 끝(x=20)에 붙어 있고 행 이름은 x=57 이라, 왼쪽 가장자리가
- * 20 / 20 / 57 로 계단이 됐다 — 오른쪽은 소계와 금액이 한 선에 정렬되는데 왼쪽만
- * 어긋나 있었다. 이모지 폭과 gap 에서 나오는 값이므로 여기서 한 번만 정한다.
- */
-export const rowNameIndentClass = 'pl-10'
 
 export function List({ children }: { children: React.ReactNode }) {
   return <ul className={listClass}>{children}</ul>
