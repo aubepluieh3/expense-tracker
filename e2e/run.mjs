@@ -575,6 +575,51 @@ for (round = 1; round <= ROUNDS; round++) {
   const today = new Date()
   const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
 
+  /**
+   * "이 달 안의 미래 날짜". +3일을 그대로 쓰면 월말에 다음 달로 넘어가고,
+   * 그러면 이 달 목록·위젯에 안 나타나 검증 자체가 성립하지 않는다
+   * (7/29 에 +3 = 8/1 로 실제로 이 검증이 3회 모두 깨졌다).
+   */
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  const futureInMonth = new Date(today)
+  futureInMonth.setDate(Math.min(today.getDate() + 3, lastDay.getDate()))
+  const hasFutureDay = iso(futureInMonth) !== iso(today)
+
+  /*
+    등록했는데 "등록하라" 고 하던 버그. get_salary_widget 이 미래 급여를 걸러내므로
+    (occurred_on <= p_today) 위젯은 비는데, 안내는 급여가 아예 없을 때와 같은 말을 했다.
+    지급일을 잘못 넣었을 때도 이 상태가 되므로 그 거래로 가는 길이 있어야 한다.
+  */
+  await check('위젯', '미래 날짜 급여 → 등록하라 하지 않고 지급 예정을 알린다', async () => {
+    if (!hasFutureDay) skip('오늘이 이 달 마지막 날 — 이 달 안에 미래 날짜가 없다')
+    await page.goto(`${APP}/?month=${thisMonth}&new=1`, { waitUntil: 'domcontentloaded' })
+    await dlg().waitFor({ timeout: 20000 })
+    await dlg().getByRole('radio', { name: '수입', exact: true }).click()
+    await chip(/^급여/).click()
+    await dlg().getByPlaceholder('0').fill('3000000')
+    await dlg().locator('input[type="date"]').fill(iso(futureInMonth))
+    await page.getByRole('button', { name: '저장' }).click()
+    await dlg().waitFor({ state: 'detached', timeout: 20000 })
+
+    await page.getByText('지급 예정').waitFor({ timeout: 15000 })
+    expect(
+      (await page.getByText('월급을 등록하면').count()) === 0,
+      '급여를 등록했는데 등록하라고 한다',
+    )
+
+    await page.getByRole('button', { name: '거래 열기' }).click()
+    await dlg().waitFor({ timeout: 15000 })
+    expect(
+      (await dlg().locator('input[type="date"]').inputValue()) === iso(futureInMonth),
+      '안내가 가리킨 것과 다른 거래가 열렸다',
+    )
+
+    // 아래 검증들이 깨끗한 상태에서 시작하도록 지운다
+    await dlg().getByRole('button', { name: '거래 삭제' }).click()
+    await dlg().getByRole('button', { name: '삭제' }).click()
+    await dlg().waitFor({ state: 'detached', timeout: 20000 })
+  })
+
   await check('위젯', '급여 등록 → 월급 위젯 표시', async () => {
     await page.goto(`${APP}/?month=${thisMonth}&new=1`, { waitUntil: 'domcontentloaded' })
     await dlg().waitFor({ timeout: 20000 })
@@ -597,16 +642,6 @@ for (round = 1; round <= ROUNDS; round++) {
     await dlg().waitFor({ state: 'detached', timeout: 20000 })
     await page.getByText('2,500,000').first().waitFor({ timeout: 15000 })
   })
-
-  /**
-   * "이 달 안의 미래 날짜". +3일을 그대로 쓰면 월말에 다음 달로 넘어가고,
-   * 그러면 이 달 목록·위젯에 안 나타나 검증 자체가 성립하지 않는다
-   * (7/29 에 +3 = 8/1 로 실제로 이 검증이 3회 모두 깨졌다).
-   */
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-  const futureInMonth = new Date(today)
-  futureInMonth.setDate(Math.min(today.getDate() + 3, lastDay.getDate()))
-  const hasFutureDay = iso(futureInMonth) !== iso(today)
 
   await check('위젯', '미래 지출 → 예정 배지 + 위젯의 예정 표시', async () => {
     if (!hasFutureDay) skip('오늘이 이 달 마지막 날 — 이 달 안에 미래 날짜가 없다')

@@ -240,7 +240,11 @@ export default function Transactions() {
       ) : (
         <>
           <MonthSummary month={month} variant="hero" />
-          <SalaryWidget month={month} onRecordSalary={openNew} compactGuidance />
+          <SalaryWidget
+            month={month}
+            onRecordSalary={openNew}
+            onOpenTransaction={(id) => patchParams({ edit: id }, { push: true })}
+          />
         </>
       )}
 

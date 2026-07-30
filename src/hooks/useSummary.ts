@@ -48,3 +48,38 @@ export function useSalaryWidget() {
     },
   })
 }
+
+/**
+ * 지급일이 아직 오지 않은 급여.
+ *
+ * 위젯이 빈 이유를 가르는 데만 쓴다. get_salary_widget 은 `occurred_on <= p_today`
+ * 로 걸러서(0003_summary.sql — "미래에 등록한 급여는 아직 안 받은 돈") 미래 급여가
+ * 있어도 빈 값을 준다. 그래서 화면은 "월급을 등록하면" 이라고 말했고, 방금 등록한
+ * 사람에게는 거짓이었다 — 등록은 됐고 지급일이 안 온 것이다.
+ *
+ * RPC 를 고치는 대신 여기서 한 번 더 묻는다. 마이그레이션은 배포와 별도로 손으로
+ * 돌려야 하는 일이라, 프론트만으로 끝나는 쪽이 어긋날 여지가 적다.
+ *
+ * 위젯이 값을 잃었을 때만 조회한다(enabled) — 정상 상태에서는 필요 없는 왕복이다.
+ */
+export function useUpcomingSalary(categoryId: string | null, enabled: boolean) {
+  const today = useToday()
+  return useQuery({
+    queryKey: qk.upcomingSalary(categoryId, today),
+    enabled: enabled && !!categoryId,
+    queryFn: async (): Promise<{ id: string; occurred_on: string; amount: number } | null> => {
+      // enabled 로 막혀 있어 도달하지 않지만, ! 로 타입을 우회하지 않는다.
+      if (!categoryId) throw new Error('카테고리 id 가 없습니다')
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id, occurred_on, amount')
+        .eq('category_id', categoryId)
+        .gt('occurred_on', today)
+        .order('occurred_on', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+}
