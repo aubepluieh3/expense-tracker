@@ -964,6 +964,40 @@ for (round = 1; round <= ROUNDS; round++) {
     await page.getByText('월 남은 금액').first().waitFor({ timeout: 15000 })
   })
 
+  /*
+    "등록했는데 등록하라고 한다" 의 두 번째 원인.
+
+    위젯도, 미래 급여 조회도 **지정된 카테고리 한 곳만** 본다. 그래서 지정이 다른
+    수입 카테고리를 가리키면(위 검증이 '용돈' 으로 옮겨 둔 상태) '급여' 에 든
+    3,000,000원을 못 보고 "월급을 등록하면" 이라고 말한다 — 방금 등록한 사람에게
+    등록하라고 하는 그 버그다. 지정을 옮겨서든, 다른 수입 카테고리에 넣어서든
+    사용자가 보는 증상과 해야 할 일은 같다: 등록이 아니라 기준을 맞추는 것이다.
+
+    위 검증(위젯이 빈 상태로)이 이 상태를 정상으로 못박아 두고 있었다 —
+    '월급 기준으로도 보여드려요' 는 미지정·미등록 두 안내에 모두 걸리는 문구라
+    거짓 안내를 통과시켰다.
+  */
+  await check('위젯', '지정이 딴 곳을 가리켜도 "등록하라" 고 하지 않는다', async () => {
+    const guide = page.getByText('💼').first()
+    await guide.waitFor({ timeout: 20000 })
+    expect(
+      (await page.getByText('월급을 등록하면').count()) === 0,
+      "급여 3,000,000원이 '급여' 에 등록돼 있는데 등록하라고 한다",
+    )
+    expect(
+      (await page.getByRole('button', { name: '등록하기' }).count()) === 0,
+      '등록 시트로 보낸다 — 등록은 이미 끝났고 어긋난 것은 지정이다',
+    )
+    // 무엇이 어긋났는지 말해야 한다: 지금 기준(용돈)과 급여가 든 곳(급여)
+    const text = await guide.innerText()
+    expect(
+      text.includes('용돈') && text.includes('급여'),
+      `안내가 어긋난 지정을 설명하지 않는다: ${text}`,
+    )
+    // 그리고 바꿀 수 있는 곳으로 보낸다
+    await page.getByRole('link', { name: /바꾸기/ }).waitFor({ timeout: 10000 })
+  })
+
   await check('카테고리', '← 설정 링크로 복귀', async () => {
     await page.goto(`${APP}/settings/categories`, { waitUntil: 'domcontentloaded' })
     await page.getByRole('link', { name: '← 설정' }).click()

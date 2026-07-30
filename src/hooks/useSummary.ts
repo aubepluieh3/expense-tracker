@@ -83,3 +83,48 @@ export function useUpcomingSalary(categoryId: string | null, enabled: boolean) {
     },
   })
 }
+
+/**
+ * 급여 카테고리 **밖에** 들어 있는 수입.
+ *
+ * 위젯과 useUpcomingSalary 는 둘 다 지정된 카테고리 한 곳만 본다. 그래서 지정이
+ * 다른 수입 카테고리를 가리키면 — 지정을 옮겼든, 월급을 다른 수입 칸에 적었든 —
+ * 급여가 멀쩡히 등록돼 있는데도 화면은 "월급을 등록하면" 이라고 말했다.
+ * 이미 등록한 사람에게 등록하라고 하는, 이 화면의 가장 오래된 거짓말의 마지막 경우다.
+ *
+ * 여기서 할 일은 위젯 값을 만드는 것이 아니라 **안내를 사실로 만드는 것**이다.
+ * 그래서 지정을 바꿀 대상이 될 수 있는 수입만 찾는다:
+ *   - 삭제된 카테고리는 제외한다(`categories!inner` + deleted_at is null).
+ *     지정 화면 목록에 없는 카테고리로 "바꾸세요" 라고 하면 따를 수 없는 안내다.
+ *   - 날짜는 걸지 않는다. 미래 급여여도 지정을 바꾸는 것이 할 일이고, 바꾸면
+ *     그때는 "지급 예정" 안내가 맡는다.
+ *
+ * 가장 최근 것 하나만 가져온다 — 안내에 이름 하나를 넣는 데 필요한 전부다.
+ */
+export function useIncomeOutsideSalary(categoryId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.incomeOutsideSalary(categoryId),
+    enabled: enabled && !!categoryId,
+    queryFn: async (): Promise<{
+      id: string
+      occurred_on: string
+      amount: number
+      categories: { name: string }
+    } | null> => {
+      // enabled 로 막혀 있어 도달하지 않지만, ! 로 타입을 우회하지 않는다.
+      if (!categoryId) throw new Error('카테고리 id 가 없습니다')
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id, occurred_on, amount, categories!inner(name, deleted_at)')
+        .eq('type', 'income')
+        .neq('category_id', categoryId)
+        .is('categories.deleted_at', null)
+        .order('occurred_on', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+}
