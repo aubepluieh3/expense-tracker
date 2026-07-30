@@ -803,26 +803,18 @@ for (round = 1; round <= ROUNDS; round++) {
     expect(!u.searchParams.has('type') && !u.searchParams.has('category'), '필터가 안 풀림')
   })
 
-  await check('통계', '스택 바 + 막대 + 누적', async () => {
+  await check('통계', '스택 바 + 막대', async () => {
     await page.getByRole('link', { name: /통계/ }).click()
     await page.getByText('이번 달 지출').waitFor({ timeout: 20000 })
-    await page.getByText('앱 사용 이후 누적').waitFor({ timeout: 15000 })
+    await page.getByRole('button', { name: /식비/ }).first().waitFor({ timeout: 15000 })
     /*
-      금액만으로 찾으면 안 된다 — 이 흐름의 거래가 전부 이번 달이라 달력월 "남은 금액"
-      과 누적이 같은 값이고, getByText 가 두 곳에 걸린다. 라벨에 붙은 값을 읽는다.
+      전 기간 누적은 이 화면에서 뺐다 — 두 기간 축 어디에도 속하지 않는 숫자였고,
+      달력월 요약이 이 화면에 온 뒤로는 "7월 남은 금액" 과 같은 값으로 나란히 떴다.
     */
-    let net = null
-    try {
-      await waitUntil(async () => {
-        const t = await page.evaluate(() => document.body.innerText)
-        net = t.match(/앱 사용 이후 누적\s*\n?\s*([+−-][\d,]+)원/)?.[1] ?? null
-        return net === '+2,492,000'
-      }, 15000)
-    } catch {
-      // 값이 온다/안 온다가 아니라 "무엇이 보였는지" 를 남긴다. 이 화면은 다시 들어올 때
-      // 캐시를 먼저 보여주고 뒤에서 다시 조회하므로, 낡은 값이 잠깐 보이는 것은 정상이다.
-      expect(false, `누적이 +2,492,000 이 아니다 (${net})`)
-    }
+    expect(
+      (await page.getByText('앱 사용 이후 누적').count()) === 0,
+      '기간과 무관한 누적 줄이 남아 있다',
+    )
   })
 
   await check('통계', '막대 탭 → 필터된 내역으로 드릴다운', async () => {

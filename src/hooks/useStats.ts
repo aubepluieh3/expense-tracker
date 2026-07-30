@@ -53,15 +53,3 @@ export function categoryStatsOf(
   }
   return [...byId.values()].sort((a, b) => b.total - a.total)
 }
-
-/** 앱 사용 이후 누적. 통장 잔고가 아니다. */
-export function useLifetimeNet() {
-  return useQuery({
-    queryKey: qk.lifetimeNet(),
-    queryFn: async (): Promise<number> => {
-      const { data, error } = await supabase.rpc('get_lifetime_net', {})
-      if (error) throw error
-      return data ?? 0
-    },
-  })
-}

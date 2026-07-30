@@ -8,7 +8,7 @@ import { Screen } from '@/components/ui/Screen'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { useMonthParam } from '@/hooks/useMonthParam'
 import { useMonthSummary, usePrevMonthSummary, useSalaryWidget } from '@/hooks/useSummary'
-import { categoryStatsOf, useCategoryStats, useLifetimeNet } from '@/hooks/useStats'
+import { categoryStatsOf, useCategoryStats } from '@/hooks/useStats'
 import { useRangeTransactions } from '@/hooks/useTransactions'
 import { useToday } from '@/hooks/useToday'
 import { formatAmount } from '@/lib/format'
@@ -40,7 +40,6 @@ export default function Stats() {
   const stats = useCategoryStats(month)
   const summary = useMonthSummary(month)
   const prev = usePrevMonthSummary(month)
-  const lifetime = useLifetimeNet()
   const salary = useSalaryWidget()
   const todayIso = useToday()
 
@@ -211,27 +210,6 @@ export default function Stats() {
           // 것이다. 그 흐름을 한 번의 탭으로 연결한다. 월은 URL 로 유지된다.
           onSelect={(categoryId) => navigate(`/?month=${month}&category=${categoryId}`)}
         />
-      )}
-
-      {/*
-        라벨은 먼저 자리를 잡고 숫자만 나중에 채운다. 줄 전체를 조회 뒤에 렌더하면
-        화면 맨 아래가 늦게 자라서, 끝까지 스크롤해 둔 사람의 시야가 밀린다.
-
-        실패하면 줄을 내린다 — 앱 사용 이후 누적은 각주이고, 각주 하나가 실패했다고
-        다시 시도 버튼을 두 개로 늘릴 이유는 없다.
-      */}
-      {!lifetime.isError && (
-        <div className="mt-8 flex items-baseline justify-between border-t border-line pt-3">
-          <span className="text-label text-ink-muted">앱 사용 이후 누적</span>
-          {lifetime.isPending ? (
-            <div className="h-4 w-24 animate-pulse rounded bg-surface-3" aria-hidden />
-          ) : (
-            <span className="text-body font-semibold tabular-nums text-ink">
-              {lifetime.data >= 0 ? '+' : '−'}
-              {formatAmount(Math.abs(lifetime.data))}원
-            </span>
-          )}
-        </div>
       )}
     </Screen>
   )

@@ -125,10 +125,6 @@ export interface Database {
         Args: { p_month: string }
         Returns: CategoryStatRow[]
       }
-      get_lifetime_net: {
-        Args: Record<string, never>
-        Returns: number
-      }
       get_recent_category_ids: {
         Args: Record<string, never>
         Returns: { category_id: string }[]
