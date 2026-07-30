@@ -260,12 +260,20 @@ export function TransactionFormSheet({
           }}
         />
 
+        {/*
+          조회 상태를 그대로 넘긴다. 넘기지 않았을 때는 chips 가 [] 라서 칩 자리에
+          "지출 카테고리가 없습니다 · 카테고리 만들러 가기 →" 가 떴다 — 기본
+          카테고리 10개를 가진 사람에게, 아직 안 온 것을 없다고 말한 것이다.
+        */}
         <CategoryChips
           categories={chips}
           type={type}
           recent={recent}
           value={categoryId}
           onChange={setCategoryId}
+          pending={active.isPending}
+          error={active.isError}
+          onRetry={() => void active.refetch()}
         />
 
         <div className="space-y-3 border-t border-line pt-4">

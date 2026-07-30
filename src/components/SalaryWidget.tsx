@@ -65,6 +65,27 @@ export function SalaryWidget({
    * 카테고리 화면에 가면 이미 지정된 걸 보고 다시 돌아 나와야 했다.
    */
   if (!data) {
+    /*
+      어느 안내를 띄울지는 "급여 카테고리가 지정돼 있는가" 로 갈린다. 그 답을
+      아직 모르는 동안 기본값으로 계산하면 **틀린 쪽으로 보낸다** — categories 가
+      오기 전에는 designated 가 false 여서 "급여 카테고리를 정하면" 이 떴고,
+      링크를 따라가면 이미 지정된 것을 보고 돌아 나와야 했다. 위 주석이 걱정한
+      바로 그 상황이 로딩 중에 되살아난 셈이다.
+
+      모르는 동안에는 묻지 않는다: 위와 같은 스켈레톤으로 자리만 잡는다.
+      판정에 실패했으면 아무 말도 하지 않는다 — 이 위젯은 조회 실패에 이미
+      침묵을 택했고(위 isError), 반쪽 정보로 엉뚱한 화면에 보내는 것보다 낫다.
+    */
+    if (profile.isPending || categories.isPending) {
+      return (
+        <div className="mt-3 space-y-2" aria-hidden>
+          <div className="h-3 w-24 animate-pulse rounded bg-surface-3" />
+          <div className="h-7 w-40 animate-pulse rounded bg-surface-3" />
+        </div>
+      )
+    }
+    if (profile.isError || categories.isError) return null
+
     const salaryId = profile.data?.salary_category_id
     const designated = !!salaryId && (categories.data ?? []).some((c) => c.id === salaryId)
 
