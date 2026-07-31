@@ -134,7 +134,8 @@ export function SalaryWidget({
       return (
         <p className={line}>
           💼 급여 카테고리를 정하면 월급 기준으로도 보여드려요{' '}
-          <TextLink to="/settings/categories" className="font-normal underline">
+          {/* 아래 '기준 바꾸기' 와 같은 이유로 수입 탭으로 연다(Categories). */}
+          <TextLink to="/settings/categories?type=income" className="font-normal underline">
             지정하기
           </TextLink>
         </p>
@@ -182,7 +183,11 @@ export function SalaryWidget({
           💼 월급 기준이 '{designated.name}' 이에요. '{elsewhere.categories.name}' 로 바꾸면 월급
           기준으로도 보여드려요{' '}
           {/* 링크가 줄바꿈에 쪼개지면 "기준 / 바꾸기" 로 갈라져 두 개처럼 보인다. */}
-          <TextLink to="/settings/categories" className="whitespace-nowrap font-normal underline">
+          {/* 수입 탭으로 연다 — 기준 토글은 수입 카테고리에만 있다(Categories). */}
+          <TextLink
+            to="/settings/categories?type=income"
+            className="whitespace-nowrap font-normal underline"
+          >
             기준 바꾸기
           </TextLink>
         </p>

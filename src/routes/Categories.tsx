@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { Page } from '@/components/ui/Screen'
 import { Sheet } from '@/components/ui/Sheet'
@@ -67,7 +68,35 @@ async function toRestoreOrMessage(
 }
 
 export default function Categories() {
-  const [tab, setTab] = useState<CategoryType>('expense')
+  /**
+   * 탭을 URL 에 둔다 (`?type=income`).
+   *
+   * 월급 위젯의 '지정하기'·'기준 바꾸기' 가 이 화면으로 보내는데, 거기서 할 일인
+   * "월급 위젯 기준으로 사용" 토글은 수입 카테고리 수정 시트에만 있다(아래
+   * SalaryToggle). 기본값인 지출 탭으로 열리면 도착한 사람이 지출 목록에서 급여를
+   * 찾다가 탭을 스스로 옮겨야 했다 — 링크가 목적지의 절반까지만 데려간 셈이다.
+   *
+   * 로컬 상태의 초기값이 아니라 URL 인 이유: 이 앱의 다른 탭·필터가 모두 쿼리로
+   * 살고(useMonthParam · Transactions 의 `type`) 새로고침과 뒤로가기가 공짜로
+   * 따라온다. 이름도 그 필터와 같은 `type` 을 쓴다 — 화면이 달라도 뜻이 같다.
+   */
+  const [params, setParams] = useSearchParams()
+  const tab: CategoryType = params.get('type') === 'income' ? 'income' : 'expense'
+  /**
+   * 탭 전환은 히스토리를 쌓지 않는다(replace). 지출↔수입을 몇 번 눌렀다고
+   * 뒤로가기가 그만큼 제자리걸음하면, 설정으로 돌아가려는 사람이 갇힌다.
+   */
+  function setTab(next: CategoryType) {
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        p.set('type', next)
+        return p
+      },
+      { replace: true },
+    )
+  }
+
   const [sheet, setSheetState] = useState<Sheets>(null)
   const [snack, setSnack] = useState<SnackbarState>(null)
   /**
