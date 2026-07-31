@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { monthSummaryOptions } from '@/hooks/useSummary'
 import { monthTransactionsOptions } from '@/hooks/useTransactions'
@@ -39,4 +39,33 @@ export function usePrefetchAdjacentMonths(
       void qc.prefetchQuery(monthSummaryOptions(m))
     }
   }, [qc, month, ready])
+}
+
+/**
+ * 한 달을 화면에 그릴 수 있을 때까지 기다린다. 월 선택 시트가 "다 받은 뒤에 닫기"
+ * 에 쓴다 (MonthNavigator).
+ *
+ * 시트는 프리페치가 못 덮는 경로다 — 6개월 전을 고르면 캐시가 없다. 그런데 여기는
+ * 화살표와 달리 **기다릴 자리가 있다**: 시트가 이미 열려 있고 누른 달이 즉시
+ * 강조되므로 탭이 먹었다는 피드백이 끊기지 않는다. 그래서 아래 화면에 반쪽 상태를
+ * 내보내는 대신 시트 안에서 기다린다.
+ *
+ * 이미 값이 있으면 기다리지 않는다. 낡았어도 화면은 즉시 채워지고 갱신은 뒤에서
+ * 도므로, 여기서 기다리면 시트가 이유 없이 남는다 — staleTime(30초)이 지난 달로
+ * 돌아가는 흔한 경우가 그렇다.
+ */
+export function useEnsureMonth() {
+  const qc = useQueryClient()
+
+  return useCallback(
+    async (month: Month) => {
+      const tx = monthTransactionsOptions(month)
+      const summary = monthSummaryOptions(month)
+      await Promise.all([
+        qc.getQueryData(tx.queryKey) === undefined ? qc.prefetchQuery(tx) : null,
+        qc.getQueryData(summary.queryKey) === undefined ? qc.prefetchQuery(summary) : null,
+      ])
+    },
+    [qc],
+  )
 }

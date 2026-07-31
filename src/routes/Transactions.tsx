@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MonthNavigator } from '@/components/MonthNavigator'
 import { SalaryWidget } from '@/components/SalaryWidget'
@@ -13,7 +13,8 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { PlusIcon } from '@/components/ui/icons'
 import { useMonthParam } from '@/hooks/useMonthParam'
-import { usePrefetchAdjacentMonths } from '@/hooks/usePrefetchMonths'
+import { useEnsureMonth, usePrefetchAdjacentMonths } from '@/hooks/usePrefetchMonths'
+import { useSustained } from '@/hooks/useSustained'
 import { useAllCategories } from '@/hooks/useCategories'
 import {
   useCreateTransaction,
@@ -30,33 +31,16 @@ import type { Category, CategoryType } from '@/types/database'
 const NO_ITEMS: TransactionListItem[] = []
 
 /**
- * 로딩 표시를 켜기까지 기다리는 시간.
+ * 흐림을 켜기까지 기다리는 시간.
  *
  * 즉시 켜면 프리페치가 먹어서 100ms 에 끝나는 이동에서도 흐림이 번쩍한다 —
  * 깜빡임을 없애려고 넣은 장치가 새 깜빡임을 만드는 셈이다. 양옆 달을 미리
- * 받아 두므로(usePrefetchMonths) 대부분의 ‹ › 이동은 이 문턱을 못 넘고,
- * 표시는 실제로 기다리게 되는 경로에만 나타난다.
+ * 받아 두므로(usePrefetchMonths) 대부분의 ‹ › 이동은 이 문턱을 못 넘는다.
+ *
+ * 월 선택 시트는 이 문턱에 닿기 전에 자기가 기다리므로(MonthNavigator) 여기까지
+ * 오는 경로는 화살표와, 시트가 기다리다 지친 경우뿐이다.
  */
 const DIM_DELAY = 200
-
-/**
- * cond 가 delay 이상 이어질 때만 true.
- *
- * cond 가 꺼지면 즉시 false 다 — 값이 도착한 순간에는 기다릴 이유가 없고,
- * 늦추면 이미 새 달인 화면이 흐린 채로 남는다.
- */
-function useSustained(cond: boolean, delay: number) {
-  const [on, setOn] = useState(false)
-  useEffect(() => {
-    if (!cond) {
-      setOn(false)
-      return
-    }
-    const id = setTimeout(() => setOn(true), delay)
-    return () => clearTimeout(id)
-  }, [cond, delay])
-  return on
-}
 
 export default function Transactions() {
   const [month, setMonth] = useMonthParam()
@@ -100,6 +84,8 @@ export default function Transactions() {
 
   /** 양옆 달을 미리 받아 둔다. 지금 달이 진짜로 다 온 뒤에 시작한다. */
   usePrefetchAdjacentMonths(month, tx.isSuccess && !tx.isPlaceholderData)
+  /** 월 선택 시트가 이걸 기다린 뒤 닫힌다 — 멀리 건너뛰는 경로는 프리페치 밖이다. */
+  const ensureMonth = useEnsureMonth()
 
   const categoryById = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
@@ -264,6 +250,7 @@ export default function Transactions() {
         month={month}
         onChange={setMonth}
         busy={dimmed}
+        prepare={ensureMonth}
         right={
           <>
             <FilterToggleButton

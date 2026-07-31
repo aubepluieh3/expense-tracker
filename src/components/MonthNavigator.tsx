@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
+import { useSustained } from '@/hooks/useSustained'
 import { currentMonth, monthLabel, shiftMonth, type Month } from '@/lib/month'
 
 /**
@@ -10,10 +11,23 @@ export function MonthNavigator({
   month,
   onChange,
   busy,
+  prepare,
   right,
 }: {
   month: Month
   onChange: (m: Month) => void
+  /**
+   * 그 달을 그릴 수 있게 준비한다. 주면 **월 선택 시트가 준비를 기다린 뒤 닫힌다**.
+   *
+   * ‹ › 에는 쓰지 않는다. 양옆은 미리 받아 두므로(usePrefetchMonths) 기다릴 일이
+   * 거의 없고, 혹 기다리게 되어도 화살표를 누른 뒤 아무 일도 안 일어나면 탭이
+   * 씹힌 것으로 읽힌다 — 그쪽은 즉시 옮기고 아래 화면이 로딩 표시를 맡는다.
+   *
+   * 시트는 사정이 다르다. 멀리 건너뛰면 캐시가 없는데, 시트 안에는 기다림을
+   * 보여줄 자리가 있고 누른 달이 즉시 강조되므로 피드백이 끊기지 않는다.
+   * 반쪽 상태를 아래 화면에 내보내는 것보다 시트에서 기다리는 편이 낫다.
+   */
+  prepare?: (m: Month) => Promise<void>
   /**
    * 새 달을 기다리는 중. 값을 주면 그 자리(6px)가 **늘 잡혀 있고** 켜질 때만 보인다 —
    * 나타날 때 자리를 만들면 옆의 '이번 달' 버튼이 밀린다.
@@ -102,6 +116,7 @@ export function MonthNavigator({
       {picking && (
         <MonthPicker
           month={month}
+          prepare={prepare}
           onClose={() => setPicking(false)}
           onPick={(m) => {
             onChange(m)
@@ -123,17 +138,59 @@ export function MonthNavigator({
 const YEARS_BACK = 10
 const YEARS_AHEAD = 1
 
+/** 이만큼 넘게 기다리게 될 때만 "불러오는 중" 을 띄운다. 그 아래는 그냥 닫힌다. */
+const SPINNER_AFTER = 150
+/**
+ * 아무리 늦어도 이만큼이면 그냥 넘어간다.
+ *
+ * 없으면 조회가 느리거나 실패하는 동안 시트에 갇힌다 — 사용자가 요청한 것은
+ * "그 달로 가기" 인데 못 가는 게 최악이다. 넘어간 뒤에는 아래 화면의 로딩
+ * 표시가 맡는다(Transactions).
+ */
+const WAIT_MAX = 1500
+
 function MonthPicker({
   month,
   onPick,
   onClose,
+  prepare,
 }: {
   month: Month
   onPick: (m: Month) => void
   onClose: () => void
+  prepare?: (m: Month) => Promise<void>
 }) {
   const [year, setYear] = useState(Number(month.slice(0, 4)))
   const thisMonth = currentMonth()
+
+  /** 준비를 기다리고 있는 달. 누른 즉시 강조되므로 탭 피드백은 끊기지 않는다. */
+  const [pending, setPending] = useState<Month | null>(null)
+  const slow = useSustained(!!pending, SPINNER_AFTER)
+
+  /*
+    기다리는 사이에 상황이 바뀔 수 있고, 그때 늦게 끝난 준비가 달을 옮기면 안 된다.
+    두 경우다 — 다른 달을 다시 눌렀거나, 시트를 닫았거나. 세는 값을 하나 두고
+    둘 다 그 값을 올려서 무효로 만든다(닫기는 아래 언마운트 정리가 한다).
+  */
+  const attempt = useRef(0)
+  useEffect(() => () => void (attempt.current += 1), [])
+
+  async function pick(value: Month) {
+    if (!prepare) {
+      onPick(value)
+      return
+    }
+    const my = (attempt.current += 1)
+    setPending(value)
+    // prefetchQuery 는 실패해도 reject 하지 않지만, 기대에 기대지 않는다 —
+    // 여기서 throw 가 새면 시트가 눌린 채로 멈춘다.
+    await Promise.race([
+      prepare(value).catch(() => {}),
+      new Promise((r) => setTimeout(r, WAIT_MAX)),
+    ])
+    if (attempt.current !== my) return
+    onPick(value)
+  }
 
   const thisYear = Number(thisMonth.slice(0, 4))
   // 이미 범위 밖의 달을 보고 있다면(URL 로 들어온 경우) 그 해까지는 허용한다.
@@ -141,7 +198,16 @@ function MonthPicker({
   const maxYear = Math.max(thisYear + YEARS_AHEAD, year)
 
   return (
-    <Sheet title="월 선택" onClose={onClose}>
+    <Sheet
+      title="월 선택"
+      onClose={onClose}
+      /*
+        헤더 그리드가 1fr auto 1fr 이고 액션 칸은 늘 렌더된다(Sheet). 그래서 이
+        글자가 나타나도 제목이 안 밀린다 — 그리드 아래 12칸에 넣으면 시트가
+        바닥에 붙어 있어서 격자가 위로 밀렸다.
+      */
+      action={slow ? <span className="text-caption text-ink-muted">불러오는 중…</span> : undefined}
+    >
       <div className="mb-4 flex items-center justify-center gap-6">
         <button
           aria-label="이전 해"
@@ -166,13 +232,20 @@ function MonthPicker({
         {Array.from({ length: 12 }, (_, i) => {
           const value = `${year}-${String(i + 1).padStart(2, '0')}`
           const selected = value === month
+          const loading = value === pending
           return (
             <button
               key={value}
-              onClick={() => onPick(value)}
+              onClick={() => void pick(value)}
+              aria-busy={loading && slow ? true : undefined}
+              /*
+                누른 달은 준비가 끝나기 전에도 곧바로 선택된 모양이 된다. 시트가
+                열린 채 남는 구간이라, 여기서 아무 변화가 없으면 탭이 씹힌 것으로
+                읽힌다 — 시트에서 기다리기로 한 근거가 바로 이 피드백이다.
+              */
               className={`rounded-control py-2.5 text-label transition ${
-                selected
-                  ? 'bg-accent text-white'
+                selected || loading
+                  ? `bg-accent text-white${loading && slow ? ' animate-pulse' : ''}`
                   : value === thisMonth
                     ? 'bg-surface-3 font-medium text-ink'
                     : 'text-ink-2 hover:bg-surface-3'
