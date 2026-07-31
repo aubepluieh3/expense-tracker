@@ -9,10 +9,20 @@ import { currentMonth, monthLabel, shiftMonth, type Month } from '@/lib/month'
 export function MonthNavigator({
   month,
   onChange,
+  busy,
   right,
 }: {
   month: Month
   onChange: (m: Month) => void
+  /**
+   * 새 달을 기다리는 중. 값을 주면 그 자리(6px)가 **늘 잡혀 있고** 켜질 때만 보인다 —
+   * 나타날 때 자리를 만들면 옆의 '이번 달' 버튼이 밀린다.
+   *
+   * 목록 흐림이 이미 기다림을 말하지만(Transactions) 흐림만으로는 "비활성" 으로도
+   * 읽힌다. 달을 바꾼 곳이 여기라 시선이 이미 이쪽에 있으므로 이유를 여기서 붙인다.
+   * 값을 주지 않은 화면(통계)에는 자리도 만들지 않는다.
+   */
+  busy?: boolean
   right?: React.ReactNode
 }) {
   const [picking, setPicking] = useState(false)
@@ -55,6 +65,18 @@ export function MonthNavigator({
         >
           ›
         </button>
+
+        {/* ‹ 와 › 사이에는 아무것도 넣지 않는다 — 화살표와 라벨의 거리가 좌우로
+            어긋나면 "이 달의 이전/다음" 이라는 연결이 끊긴다(위 주석). 그래서
+            기다림 표시는 달 조작 묶음의 바깥, › 뒤에 둔다. */}
+        {busy !== undefined && (
+          <span
+            aria-hidden
+            className={`size-1.5 shrink-0 rounded-full bg-ink-muted transition-opacity ${
+              busy ? 'animate-pulse opacity-100' : 'opacity-0'
+            }`}
+          />
+        )}
 
         {/*
           다른 달을 보고 있을 때만 나타난다. 8월까지 넘긴 사람이 돌아오려면

@@ -1,6 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { currentUserId, supabase } from '@/lib/supabase'
 import { invalidateAfter, qk } from '@/lib/queryKeys'
+import { MONTH_GC_TIME } from '@/lib/queryClient'
 import { monthRange, type Month } from '@/lib/month'
 import type { CategoryType } from '@/types/database'
 
@@ -50,9 +57,17 @@ type TransactionInput = {
  * 필터 목록을 "그 달에 거래가 있는 카테고리"로 채워야 하는데,
  * 쿼리를 필터링하면 그 목록 자체가 같이 줄어들어 선택지가 사라진다.
  */
-export function useMonthTransactions(month: Month) {
-  return useQuery({
+/**
+ * 훅과 프리페치가 같은 정의를 보게 한다 (usePrefetchMonths).
+ *
+ * queryFn 을 훅 안에 인라인으로 두면 prefetchQuery 에 넘길 것이 없어서 조회가
+ * 두 벌로 갈린다 — 한쪽만 고치는 종류의 버그가 생기고, 그건 키를 한 곳에 모아
+ * 둔 이유(queryKeys.ts)와 같은 문제다.
+ */
+export function monthTransactionsOptions(month: Month) {
+  return queryOptions({
     queryKey: qk.transactions(month),
+    gcTime: MONTH_GC_TIME,
     queryFn: async (): Promise<TransactionListItem[]> => {
       const { start, end } = monthRange(month)
       const { data, error } = await supabase
@@ -65,6 +80,32 @@ export function useMonthTransactions(month: Month) {
       if (error) throw error
       return data
     },
+  })
+}
+
+export function useMonthTransactions(month: Month) {
+  return useQuery({
+    ...monthTransactionsOptions(month),
+    /*
+      달을 바꾸는 동안 이전 달 목록을 자리에 남긴다.
+
+      남기지 않으면 화면이 "목록 → 스켈레톤 → 목록" 을 거친다. 실측으로 회색
+      펄스가 최대 633ms 떠 있고 화면 높이가 414 → 296 → 477px 로 두 번 튀어서,
+      스크롤 위치가 밀린다(e2e/flicker.mjs). 프리페치가 대부분의 ‹ › 이동을
+      덮지만(usePrefetchMonths) 월 선택 시트로 건너뛰거나 캐시가 만료된 경로는
+      남으므로, 그때 자리를 지키는 것이 이 옵션이다.
+
+      **호출부가 이 상태를 화면에 표시해야 한다.** 달 라벨은 URL 상태라 클릭
+      즉시 바뀌는데 행은 아직 이전 달 것이므로, 표시가 없으면 "6월" 아래에
+      7월 거래가 서 있는 셈이다. Transactions 가 isPlaceholderData 를 받아
+      흐림과 클릭 차단을 건다.
+
+      목록에만 쓴다. 행은 각자 날짜를 들고 있어서(DayGroup 헤더가 "7월 5일")
+      흐려진 상태에서 어긋남이 스스로 드러나지만, 월 요약의 대표 숫자는 자기
+      기간을 안 들고 있다 — 24px 숫자 하나뿐이라 흐려도 그냥 읽힌다. 그래서
+      useMonthSummary 에는 일부러 걸지 않았다(useSummary.ts).
+    */
+    placeholderData: keepPreviousData,
   })
 }
 

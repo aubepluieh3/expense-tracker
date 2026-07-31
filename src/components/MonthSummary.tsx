@@ -37,11 +37,42 @@ export function MonthSummary({
   const monthNumber = Number(month.slice(5, 7))
 
   if (isPending) {
+    /*
+      대표 숫자는 이전 달 값을 남기지 않는다 — 왜인지는 useSummary 에 적었다.
+      그래서 여기서 할 일은 "자리를 지키는 것" 뿐이다.
+
+      막대 높이를 h-3 / h-7 로 박아 두었더니 그 자리가 실제 대표 숫자보다
+      낮아서, 값이 도착할 때 아래 목록이 통째로 밀렸다. 달을 바꿀 때 화면이
+      414 → 296 → 477px 로 튄 것의 일부다(e2e/flicker.mjs).
+
+      그래서 막대에 높이를 주는 대신 **아래 실제 마크업과 같은 태그·같은 텍스트
+      클래스**를 쓰고 안에 &nbsp; 를 넣는다. 줄 높이가 글꼴에서 나오므로 자리가
+      정의상 같아지고, 타입 스케일을 고쳐도(index.css) 따라온다.
+
+      막대는 absolute 로 흐름에서 뺀다. 처음에 inline-block 으로 &nbsp; 를 감쌌더니
+      그 자체가 줄 상자를 키워서 이번에는 자리가 실제보다 25px **높았다** — 붕괴가
+      초과로 바뀐 것뿐이고 목록은 여전히 내려갔다 올라온다. 흐름에서 빼면 줄 높이는
+      &nbsp; 하나가 정하므로 실제 텍스트와 같아진다.
+
+      완전히 같아지지는 않는다 — 기록이 없는 달은 아래에서 null 을 반환하고
+      수입이 없는 달은 근거 줄이 빠지므로, 그 두 경우에는 값이 온 뒤 자리가
+      줄어든다. 미리 알 수 없는 것들이라 여기서 맞출 방법이 없다.
+    */
+    const bar = 'absolute inset-y-0.5 left-0 animate-pulse rounded bg-surface-3'
     return variant === 'hero' ? (
-      <div className="mt-4 space-y-2" aria-hidden>
-        <div className="h-3 w-24 animate-pulse rounded bg-surface-3" />
-        <div className="h-7 w-40 animate-pulse rounded bg-surface-3" />
-        <div className="h-3 w-32 animate-pulse rounded bg-surface-3" />
+      <div className="mt-4" aria-hidden>
+        <p className="relative text-label">
+          &nbsp;
+          <span className={`${bar} w-24`} />
+        </p>
+        <p className="relative mt-0.5 text-hero font-semibold">
+          &nbsp;
+          <span className={`${bar} w-40`} />
+        </p>
+        <p className="relative mt-1 text-caption">
+          &nbsp;
+          <span className={`${bar} w-32`} />
+        </p>
       </div>
     ) : (
       <div className="mt-3 border-t border-line pt-3" aria-hidden>

@@ -1,14 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { MONTH_GC_TIME } from '@/lib/queryClient'
 import { monthRange, shiftMonth, type Month } from '@/lib/month'
 import { useToday } from '@/hooks/useToday'
 import { qk } from '@/lib/queryKeys'
 import type { MonthSummaryRow, SalaryWidgetRow } from '@/types/database'
 
-/** 월별 총수입 / 총지출 / 남은 금액 */
-export function useMonthSummary(month: Month) {
-  return useQuery({
+/** 월별 총수입 / 총지출 / 남은 금액. 프리페치와 정의를 공유한다 (usePrefetchMonths). */
+export function monthSummaryOptions(month: Month) {
+  return queryOptions({
     queryKey: qk.monthSummary(month),
+    gcTime: MONTH_GC_TIME,
     queryFn: async (): Promise<MonthSummaryRow> => {
       const { data, error } = await supabase.rpc('get_month_summary', {
         p_month: monthRange(month).start,
@@ -17,6 +19,21 @@ export function useMonthSummary(month: Month) {
       return data[0] ?? { income: 0, expense: 0, net: 0 }
     },
   })
+}
+
+/**
+ * placeholderData 를 걸지 않는다 — 거래 목록과 다른 판단이다(useTransactions).
+ *
+ * 달을 바꾸는 동안 이전 달 값을 남기면 "6월 남은 금액" 라벨 아래에 7월의
+ * 2,445,679원이 선다. 목록 행은 각자 날짜를 들고 있어 어긋남이 드러나지만
+ * 이 대표 숫자는 자기 기간을 안 들고 있어서, 흐려 놓아도 24px 숫자는 그냥
+ * 읽힌다. 라벨과 값이 어긋나는 것을 이 앱은 버그로 취급해 왔다(MonthSummary).
+ *
+ * 그래서 여기서는 자리만 지키고 값을 비운다 — 스켈레톤이 실제 대표 숫자와
+ * 같은 줄 높이를 쓰게 해서(MonthSummary) 교체될 때 목록이 밀리지 않게 했다.
+ */
+export function useMonthSummary(month: Month) {
+  return useQuery(monthSummaryOptions(month))
 }
 
 /**

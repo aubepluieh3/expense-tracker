@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MonthNavigator } from '@/components/MonthNavigator'
 import { SalaryWidget } from '@/components/SalaryWidget'
@@ -13,6 +13,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { PlusIcon } from '@/components/ui/icons'
 import { useMonthParam } from '@/hooks/useMonthParam'
+import { usePrefetchAdjacentMonths } from '@/hooks/usePrefetchMonths'
 import { useAllCategories } from '@/hooks/useCategories'
 import {
   useCreateTransaction,
@@ -27,6 +28,35 @@ import type { Category, CategoryType } from '@/types/database'
 
 /** tx.data 가 없을 때마다 새 [] 를 만들면 아래 useMemo 들의 deps 가 매번 바뀐다. */
 const NO_ITEMS: TransactionListItem[] = []
+
+/**
+ * 로딩 표시를 켜기까지 기다리는 시간.
+ *
+ * 즉시 켜면 프리페치가 먹어서 100ms 에 끝나는 이동에서도 흐림이 번쩍한다 —
+ * 깜빡임을 없애려고 넣은 장치가 새 깜빡임을 만드는 셈이다. 양옆 달을 미리
+ * 받아 두므로(usePrefetchMonths) 대부분의 ‹ › 이동은 이 문턱을 못 넘고,
+ * 표시는 실제로 기다리게 되는 경로에만 나타난다.
+ */
+const DIM_DELAY = 200
+
+/**
+ * cond 가 delay 이상 이어질 때만 true.
+ *
+ * cond 가 꺼지면 즉시 false 다 — 값이 도착한 순간에는 기다릴 이유가 없고,
+ * 늦추면 이미 새 달인 화면이 흐린 채로 남는다.
+ */
+function useSustained(cond: boolean, delay: number) {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    if (!cond) {
+      setOn(false)
+      return
+    }
+    const id = setTimeout(() => setOn(true), delay)
+    return () => clearTimeout(id)
+  }, [cond, delay])
+  return on
+}
 
 export default function Transactions() {
   const [month, setMonth] = useMonthParam()
@@ -53,6 +83,23 @@ export default function Transactions() {
 
   const tx = useMonthTransactions(month)
   const categories = useAllCategories()
+
+  /**
+   * 이전 달 목록이 자리를 지키고 있는 동안(useTransactions 의 placeholderData)
+   * 그 사실을 화면에 표시한다. 표시가 없으면 "6월" 라벨 아래 7월 거래가 선다.
+   */
+  const stale = tx.isPlaceholderData
+  const dimmed = useSustained(stale, DIM_DELAY)
+  /*
+    흐림과 함께 클릭을 막는다. 흐려진 7월 행을 눌러 7월 거래 시트가 열리면
+    그건 표시 문제가 아니라 버그다. 필터 칩도 같은 규칙으로 덮는다 — 그 칩은
+    '3건 · 39,000원' 처럼 **숫자를 말하고**, 그 값은 클라이언트 필터를 이전 달
+    행에 적용한 결과다. ✕(필터 해제)가 그 사이 안 눌리는 것은 받아들인다.
+  */
+  const dimClass = `transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-50' : ''}`
+
+  /** 양옆 달을 미리 받아 둔다. 지금 달이 진짜로 다 온 뒤에 시작한다. */
+  usePrefetchAdjacentMonths(month, tx.isSuccess && !tx.isPlaceholderData)
 
   const categoryById = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
@@ -216,6 +263,7 @@ export default function Transactions() {
       <MonthNavigator
         month={month}
         onChange={setMonth}
+        busy={dimmed}
         right={
           <>
             <FilterToggleButton
@@ -290,16 +338,18 @@ export default function Transactions() {
       )}
 
       {filterActive && (
-        <FilterChip
-          type={typeFilter}
-          category={categoryFilter ? categoryById.get(categoryFilter) : undefined}
-          count={visible.length}
-          sum={visible.reduce((s, t) => s + t.amount, 0)}
-          onClear={() => patchParams({ type: null, category: null })}
-        />
+        <div className={dimClass}>
+          <FilterChip
+            type={typeFilter}
+            category={categoryFilter ? categoryById.get(categoryFilter) : undefined}
+            count={visible.length}
+            sum={visible.reduce((s, t) => s + t.amount, 0)}
+            onClear={() => patchParams({ type: null, category: null })}
+          />
+        </div>
       )}
 
-      <div className="mt-4">
+      <div className={`mt-4 ${dimClass}`} aria-busy={dimmed || undefined}>
         {tx.isPending && <ListSkeleton />}
         {tx.isError && <ErrorState onRetry={() => void tx.refetch()} />}
 
