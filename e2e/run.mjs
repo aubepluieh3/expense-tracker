@@ -797,9 +797,37 @@ for (round = 1; round <= ROUNDS; round++) {
   })
 
   await check('필터', '카테고리 선택 → 그 달 거래가 있는 카테고리만 목록에', async () => {
-    await page.getByRole('button', { name: '필터', exact: true }).click() // 접혔으니 다시 펼친다
-    const opts = await page.locator('select option').allInnerTexts()
-    expect(opts.length === 4, `옵션이 4개(전체+3)여야 하는데 ${opts.length}개: ${opts.join('/')}`)
+    /**
+     * 기대값을 숫자로 박지 않는다. 예전에는 "옵션 4개" 였는데, 그 4번째는 앞의
+     * '미래 지출' 검증이 만든 거래에서 왔다. 오늘이 말일이면 그 검증이 건너뛰어져
+     * 데이터가 없고, 여기가 3/3 으로 깨졌다 — 실제로 7월 31일에 그랬다.
+     *
+     * 검증이 다른 검증의 부작용에 몰래 기대고 있었다는 뜻이다. 화면에 보이는
+     * 거래에서 카테고리를 모아 기대값을 만들면, 이름 그대로 "그 달에 거래가 있는
+     * 카테고리만 나오는가" 를 묻게 되고 실행 순서·날짜와 무관해진다.
+     */
+    await page.getByRole('button', { name: '필터 해제' }).click()
+    await page.waitForTimeout(600)
+    const rows = await page.locator('li').allInnerTexts()
+    const inList = new Set(
+      rows.map((r) => r.split('\n').map((s) => s.trim())[1]).filter((n) => n && !/^[+−-]/.test(n)),
+    )
+
+    await page.getByRole('button', { name: '필터', exact: true }).click()
+    const opts = (await page.locator('select option').allInnerTexts()).map((t) => t.trim())
+    const inSelect = new Set(opts.slice(1).map((t) => t.replace(/^\S+\s+/, ''))) // 이모지 제거
+
+    expect(
+      inList.size > 0,
+      `목록에서 카테고리를 못 읽었다 — 행 ${rows.length}개: ${rows.slice(0, 3).join(' | ')}`,
+    )
+    const missing = [...inList].filter((n) => !inSelect.has(n))
+    const extra = [...inSelect].filter((n) => !inList.has(n))
+    expect(
+      missing.length === 0 && extra.length === 0,
+      `필터 목록이 그 달 거래와 다르다 — 빠짐 [${missing}] 남음 [${extra}] · 옵션 ${opts.join('/')}`,
+    )
+
     await page.locator('select').selectOption({ index: 1 })
     await page.waitForTimeout(500)
     expect(new URL(page.url()).searchParams.has('category'), 'category 파라미터 없음')
