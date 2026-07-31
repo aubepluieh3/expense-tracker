@@ -7,6 +7,11 @@ import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Screen } from '@/components/ui/Screen'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { useMonthParam } from '@/hooks/useMonthParam'
+import {
+  useEnsureMonth,
+  usePrefetchAdjacentMonths,
+  useStatsMonthWarmer,
+} from '@/hooks/usePrefetchMonths'
 import { useMonthSummary, usePrevMonthSummary, useSalaryWidget } from '@/hooks/useSummary'
 import { categoryStatsOf, useCategoryStats } from '@/hooks/useStats'
 import { useRangeTransactions } from '@/hooks/useTransactions'
@@ -92,6 +97,19 @@ export default function Stats() {
   const busy = axis === 'salary' ? cycleTx.isPending : stats.isPending || summary.isPending
   const failed = axis === 'salary' ? cycleTx.isError : stats.isError || summary.isError
   const ready = axis === 'salary' ? cycleTx.isSuccess : stats.isSuccess && summary.isSuccess
+
+  /*
+    달을 바꿀 때 이 화면도 내역과 같은 깜빡임이 있었다 — 대표 숫자가 회색 막대가
+    되고 차트가 5줄 스켈레톤으로 바뀐다. 다만 대처가 다르다: 여기서는 낡은 값을
+    자리에 남기지 않는다(useStats 에 이유를 적었다). 그래서 기다릴 일 자체를
+    없애는 두 가지만 쓴다.
+
+    월급 주기 축은 대상이 아니다. 그 축의 기간은 급여일부터 오늘까지 하나뿐이라
+    달과 무관하고, ‹ › 도 감춰 둔다(아래).
+  */
+  const warmer = useStatsMonthWarmer()
+  usePrefetchAdjacentMonths(warmer, month, axis === 'month' && ready)
+  const ensureMonth = useEnsureMonth(warmer)
   const retry = () => {
     if (axis === 'salary') void cycleTx.refetch()
     else {
@@ -108,7 +126,7 @@ export default function Stats() {
         급여 이력으로 경계를 다시 계산해야 하고, 그건 기획서가 폐기한 그 문제다.
       */}
       {axis === 'month' ? (
-        <MonthNavigator month={month} onChange={setMonth} />
+        <MonthNavigator month={month} onChange={setMonth} prepare={ensureMonth} />
       ) : (
         <p className="py-1.5 text-body font-semibold text-ink">
           {shortDate(cycleStart ?? todayIso)} ~ 오늘

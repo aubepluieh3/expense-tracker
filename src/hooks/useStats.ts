@@ -1,13 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { MONTH_GC_TIME } from '@/lib/queryClient'
 import { monthRange, type Month } from '@/lib/month'
 import { qk } from '@/lib/queryKeys'
 import type { CategoryStatRow } from '@/types/database'
 
-/** 카테고리별 지출. 삭제된 카테고리도 과거 이름 그대로 포함된다. */
-export function useCategoryStats(month: Month) {
-  return useQuery({
+/**
+ * 카테고리별 지출. 삭제된 카테고리도 과거 이름 그대로 포함된다.
+ *
+ * 훅과 프리페치가 같은 정의를 보도록 팩토리로 둔다 (usePrefetchMonths).
+ */
+export function categoryStatsOptions(month: Month) {
+  return queryOptions({
     queryKey: qk.categoryStats(month),
+    gcTime: MONTH_GC_TIME,
     queryFn: async (): Promise<CategoryStatRow[]> => {
       const { data, error } = await supabase.rpc('get_category_stats', {
         p_month: monthRange(month).start,
@@ -16,6 +22,18 @@ export function useCategoryStats(month: Month) {
       return data
     },
   })
+}
+
+/**
+ * placeholderData 를 걸지 않는다 — 거래 목록과 다른 판단이다(useTransactions).
+ *
+ * 거래 행은 각자 날짜를 들고 있어서(DayGroup 헤더가 "4월 9일") 흐려 놓으면 아직 그
+ * 달 것이 아님이 스스로 드러난다. 차트 막대는 `식비 420,000` 이라 어느 달 값인지
+ * 표시가 없다 — 대표 숫자와 같은 부류다. 그래서 이 화면은 낡은 값을 남기는 대신
+ * 기다릴 일 자체를 없애는 쪽으로 간다(양옆 프리페치 · 월 선택 시트가 기다리기).
+ */
+export function useCategoryStats(month: Month) {
+  return useQuery(categoryStatsOptions(month))
 }
 
 /**

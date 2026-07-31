@@ -13,7 +13,11 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Snackbar, type SnackbarState } from '@/components/ui/Snackbar'
 import { PlusIcon } from '@/components/ui/icons'
 import { useMonthParam } from '@/hooks/useMonthParam'
-import { useEnsureMonth, usePrefetchAdjacentMonths } from '@/hooks/usePrefetchMonths'
+import {
+  useEnsureMonth,
+  usePrefetchAdjacentMonths,
+  useTransactionsMonthWarmer,
+} from '@/hooks/usePrefetchMonths'
 import { useSustained } from '@/hooks/useSustained'
 import { useAllCategories } from '@/hooks/useCategories'
 import {
@@ -83,9 +87,10 @@ export default function Transactions() {
   const dimClass = `transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-50' : ''}`
 
   /** 양옆 달을 미리 받아 둔다. 지금 달이 진짜로 다 온 뒤에 시작한다. */
-  usePrefetchAdjacentMonths(month, tx.isSuccess && !tx.isPlaceholderData)
+  const warmer = useTransactionsMonthWarmer()
+  usePrefetchAdjacentMonths(warmer, month, tx.isSuccess && !tx.isPlaceholderData)
   /** 월 선택 시트가 이걸 기다린 뒤 닫힌다 — 멀리 건너뛰는 경로는 프리페치 밖이다. */
-  const ensureMonth = useEnsureMonth()
+  const ensureMonth = useEnsureMonth(warmer)
 
   const categoryById = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
