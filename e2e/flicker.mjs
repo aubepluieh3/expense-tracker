@@ -97,11 +97,17 @@ async function seed(months) {
  * innerText 를 읽지 않는다 — 프레임마다 강제 리플로우를 걸면 측정이 측정 대상을
  * 흔든다. 셀렉터 카운트와 rect 하나로 "무엇이 떠 있는가" 는 충분히 구별된다.
  *
- *   rows   거래 행 수. **판정의 기준이다** — 0 이면 보고 있던 목록이 사라진 것이다
+ *   rows   목록·차트 행 수. **판정의 기준이다** — 0 이면 보고 있던 내용이 사라진 것이다
  *   hero   대표 숫자 텍스트 ('' = 대표 자리가 비었다)
- *   dim    이전 달 목록이 로딩 표시로 흐려져 있는가 (aria-busy)
+ *   dim    아래 화면이 로딩 표시로 흐려져 있는가 (aria-busy, **시트 밖만**)
+ *   sheet  월 선택 시트가 스스로 기다리는 중인가 (시트 안의 aria-busy)
  *   pulse  animate-pulse 개수. 참고용 — 무엇이 떠 있는지 눈으로 읽을 때만 쓴다
  *   h      화면 높이 (레이아웃이 튀는 폭)
+ *
+ * dim 을 시트 밖으로 한정하는 이유: 시트가 기다릴 때 누른 달 버튼에도 aria-busy 가
+ * 붙는다(MonthNavigator). 구분하지 않고 셌더니 통계 화면 ④ 가 "흐림 432ms" 로
+ * 나왔는데, 그 화면에는 흐림이 아예 없고 시트가 기다린 시간이었다. 둘은 정반대의
+ * 뜻이다 — 하나는 아래 화면이 반쪽이 된 것이고 하나는 반쪽을 안 보이려고 기다린 것이다.
  *
  * dim 을 함께 재는 이유: 흐림도 눈에 보이는 변화다. 스켈레톤을 없애고 흐림을
  * 늘리기만 했으면 고친 게 아니므로 둘을 같은 표에 놓는다.
@@ -123,11 +129,14 @@ const SAMPLER = () => {
     const hero = [...document.querySelectorAll('.text-hero')].find(
       (el) => !el.closest('[aria-hidden]'),
     )
+    const busy = [...document.querySelectorAll('[aria-busy="true"]')]
     window.__frames.push({
       t: Math.round(performance.now()),
       rows: document.querySelectorAll('section li').length,
       hero: hero?.textContent ?? '',
-      dim: !!document.querySelector('[aria-busy="true"]'),
+      dialog: !!document.querySelector('[role="dialog"]'),
+      dim: busy.some((el) => !el.closest('[role="dialog"]')),
+      sheet: busy.some((el) => el.closest('[role="dialog"]')),
       pulse: document.querySelectorAll('.animate-pulse').length,
       h: section ? Math.round(section.getBoundingClientRect().height) : 0,
     })
@@ -138,7 +147,7 @@ const SAMPLER = () => {
 
 /** 같은 상태가 이어지는 프레임을 한 구간으로 접는다. */
 function phases(frames) {
-  const key = (f) => `${f.rows}|${f.hero}|${f.dim}|${f.pulse > 0}`
+  const key = (f) => `${f.rows}|${f.hero}|${f.dim}|${f.sheet}|${f.pulse > 0}`
   const out = []
   for (const f of frames) {
     const last = out[out.length - 1]
@@ -159,13 +168,20 @@ async function measure(page, label, act) {
   const t0 = await page.evaluate(() => performance.now())
   await act()
 
-  // 스켈레톤 없는 프레임이 연달아 나오면 그친다.
+  /*
+    조용한 프레임이 연달아 나오면 그친다.
+
+    `dialog` 를 함께 본다. 이걸 빼 두었더니 월 선택 시트가 아직 기다리는 중인데
+    측정이 끝났다 — 시트는 처음 150ms 동안 대기 표시를 켜지 않으므로(SPINNER_AFTER)
+    그 구간이 "조용한 프레임" 으로 세어졌고, 시트 경로의 안정 시간이 실제보다
+    짧게 나왔다. 달을 고른 뒤의 이야기는 시트가 닫히고 나서 끝난다.
+  */
   const deadline = Date.now() + SETTLE_TIMEOUT
   for (;;) {
     const done = await page.evaluate((need) => {
       const f = window.__frames
       if (f.length < need) return false
-      return f.slice(-need).every((x) => x.pulse === 0 && !x.dim)
+      return f.slice(-need).every((x) => x.pulse === 0 && !x.dim && !x.sheet && !x.dialog)
     }, SETTLE_FRAMES)
     if (done) break
     if (Date.now() > deadline) break
@@ -196,7 +212,7 @@ function report(m) {
     const ms = p.last.t - p.first.t
     const what =
       p.first.rows > 0
-        ? `목록 ${p.first.rows}행${p.first.dim ? ' 흐림' : ''}`
+        ? `목록 ${p.first.rows}행${p.first.dim ? ' 흐림' : ''}${p.first.sheet ? ' ·시트대기' : ''}`
         : `목록 없음(펄스 ${p.first.pulse})`
     const hero = p.first.hero ? `대표 ${p.first.hero.replace(/\s+/g, '')}` : '대표 빈 자리'
     const h = p.hMin === p.hMax ? `${p.hMin}px` : `${p.hMin}~${p.hMax}px`
@@ -217,6 +233,8 @@ function report(m) {
   const lostMs = held((p) => p.first.rows === 0)
   // 흐림도 보이는 변화다 — 스켈레톤을 흐림으로 바꾸기만 했으면 고친 게 아니다.
   const dimMs = held((p) => p.first.dim)
+  // 시트가 스스로 기다린 시간. 아래 화면은 그동안 손대지 않은 상태다.
+  const sheetMs = held((p) => p.first.sheet)
   // 대표 자리는 일부러 이전 달 값을 안 남긴다(useSummary). 그 자리가 빈 시간.
   const heroMs = held((p) => !p.first.hero)
   const heights = m.frames.map((f) => f.h)
@@ -230,9 +248,9 @@ function report(m) {
         : lost >= 0
           ? `목록 없음 ${lostMs}ms (직전에도 없었음)`
           : '깜빡임 없음 — 목록이 자리를 지켰다'
-    } · 흐림 ${dimMs}ms · 대표 빈 자리 ${heroMs}ms · 높이 변동 ${jump}px · 안정까지 ${settled}ms`,
+    } · 흐림 ${dimMs}ms · 시트대기 ${sheetMs}ms · 대표 빈 자리 ${heroMs}ms · 높이 변동 ${jump}px · 안정까지 ${settled}ms`,
   )
-  return { flicker: lost >= 0 && hadRowsBefore, lostMs, dimMs, heroMs, jump, settled }
+  return { flicker: lost >= 0 && hadRowsBefore, lostMs, dimMs, sheetMs, heroMs, jump, settled }
 }
 
 /* ──────────────────────────────────────────────────────────────────────── 실행 */
@@ -249,7 +267,18 @@ const prev2 = shiftMonth(thisMonth, -2)
  */
 const jump = shiftMonth(thisMonth, -6)
 
-console.log('── 준비')
+/**
+ * 어느 화면을 재는가. 두 탭이 달 상태를 URL 로 공유하고 같은 MonthNavigator 를
+ * 쓰므로 조작은 같다. 신호도 같다 — 통계의 카테고리 차트도 ul > li 다
+ * (CategoryBarList).
+ *
+ *   node e2e/flicker.mjs         내역
+ *   node e2e/flicker.mjs stats   통계 (달력월 축)
+ */
+const SCREEN = process.argv[2] === 'stats' ? 'stats' : 'transactions'
+const urlFor = (month) => `${APP}${SCREEN === 'stats' ? '/stats' : ''}?month=${month}`
+
+console.log(`── 준비 (${SCREEN === 'stats' ? '통계' : '내역'} 화면)`)
 const added = await seed([thisMonth, prev, prev2, jump])
 console.log(`   거래 보강: ${added.length ? added.join(' · ') : '필요 없음 (이미 3건 이상)'}`)
 
@@ -262,11 +291,40 @@ await page.waitForSelector('text=로그인', { timeout: 30000 })
 await page.getByLabel('이메일').fill(EMAIL)
 await page.getByLabel('비밀번호').fill(PASSWORD)
 await page.getByRole('button', { name: '로그인' }).click()
+/*
+  로그인이 끝난 것을 확인하고 나서 화면을 옮긴다. 곧바로 /stats 로 goto 하면
+  세션이 아직 없어서 로그인 화면으로 되돌려진다(auth/guards) — 이 대기를
+  빼먹었다가 "월 라벨 버튼을 40초 동안 못 찾음" 으로 죽었다.
+  로그인 직후는 어느 화면을 재든 내역이므로 여기 기준은 SCREEN 과 무관하다.
+*/
 await page.getByRole('button', { name: '거래 추가' }).waitFor({ timeout: 30000 })
-// 첫 화면의 조회가 모두 끝난 뒤에 재기 시작한다.
-await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, null, {
-  timeout: 30000,
-})
+
+/**
+ * 화면이 **실제로 다 그려진** 상태.
+ *
+ * "펄스가 없다" 만으로는 안 된다. goto 직후에는 아직 아무것도 시작하지 않아 펄스도
+ * 없으므로 그 조건이 즉시 통과한다 — flicker-shot.mjs 의 소크에서 그 틈으로 초기
+ * 로딩 중인 화면 위에 월 선택 시트를 열어 버렸고, 그 스켈레톤을 "누출 8건" 으로
+ * 보고했다. 앱이 아니라 하네스 결함이었다. 그래서 내용이 왔는지까지 본다.
+ */
+async function settled() {
+  await page.getByRole('button', { name: /다른 달 선택/ }).waitFor({ timeout: 40000 })
+  await page.waitForFunction(
+    () => {
+      if (document.querySelectorAll('.animate-pulse').length) return false
+      if (document.querySelector('[aria-busy="true"]')) return false
+      const rows = document.querySelectorAll('section li').length
+      return (
+        rows > 0 || /기록이 없어요|내역이 없습니다|쓴 돈이 없습니다/.test(document.body.innerText)
+      )
+    },
+    null,
+    { timeout: 40000 },
+  )
+}
+
+await page.goto(urlFor(thisMonth), { waitUntil: 'domcontentloaded' })
+await settled()
 
 const back = () => page.getByRole('button', { name: '이전 달' }).click()
 const fwd = () => page.getByRole('button', { name: '다음 달' }).click()
@@ -326,11 +384,8 @@ for (const rtt of [0, 150, 600]) {
   console.log(`\n\n════ ${tag} ════`)
 
   // 캐시를 비워 "처음 보는 달" 을 다시 만든다. 새로고침이 가장 확실하다.
-  await page.goto(`${APP}?month=${thisMonth}`, { waitUntil: 'domcontentloaded' })
-  await page.getByRole('button', { name: '거래 추가' }).waitFor({ timeout: 30000 })
-  await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, null, {
-    timeout: 30000,
-  })
+  await page.goto(urlFor(thisMonth), { waitUntil: 'domcontentloaded' })
+  await settled()
 
   summary.push([
     tag,
@@ -343,9 +398,7 @@ for (const rtt of [0, 150, 600]) {
     report(await measure(page, `${tag} · ${prev} → ${thisMonth} (캐시 있음)`, fwd)),
   ])
   await back()
-  await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, null, {
-    timeout: 30000,
-  })
+  await settled()
   summary.push([
     tag,
     '③ 또 처음 보는 달로 (‹)',
@@ -366,7 +419,7 @@ for (const [tag, what, r] of summary) {
   console.log(
     `${tag.padEnd(10)} ${what.padEnd(24)} ${
       r.flicker ? `목록 사라짐 ${String(r.lostMs).padStart(4)}ms` : '목록 유지        '
-    }  흐림 ${String(r.dimMs).padStart(4)}ms  대표 빈 자리 ${String(r.heroMs).padStart(4)}ms  높이 ${String(r.jump).padStart(4)}px  안정 ${String(r.settled).padStart(4)}ms`,
+    }  흐림 ${String(r.dimMs).padStart(4)}ms  시트대기 ${String(r.sheetMs).padStart(4)}ms  높이 ${String(r.jump).padStart(4)}px  안정 ${String(r.settled).padStart(4)}ms`,
   )
 }
 
