@@ -9,6 +9,9 @@ import type { Month } from '@/lib/month'
  * 통장에 500만원 있고 이번 달 196만원 남긴 사람이 이 숫자를 보고 혼란스러워한다.
  * 수입·지출을 함께 적어 계산 근거를 보여주면 오해가 사라진다.
  *
+ * 단 수지가 음수면 그 라벨이 값과 어긋나므로 hero 에서는 라벨을 값에 맞춘다
+ * — 아래 overspent · expenseOnly 참고.
+ *
  * 세 값을 한 줄에 넣는다. 내역 화면 상단이 8줄까지 늘어나 거래가 4건만 보였는데,
  * 근거는 만 단위로 줄여도 역할을 하므로 줄을 합치는 편이 낫다.
  *
@@ -52,6 +55,28 @@ export function MonthSummary({
   const positive = data.net >= 0
 
   /*
+    hero 라벨·색을 값에 맞춘다.
+
+    라벨을 "남은 금액" 하나로 고정했던 동안, 첫 사용자가 처음 보는 화면이
+    "7월 남은 금액 / −11,500원" (빨강) 이었다. 점심값 한 건을 적었을 뿐인데 남은 돈이
+    마이너스라고 말하는 셈이어서 문장 자체가 성립하지 않는다. 게다가 빨강은 이 앱에서
+    초과·삭제에 예약된 색인데(index.css) 수입을 아직 안 적은 상태가 초과와 같은 색이었다.
+    아래 규칙이 hero 를 아예 안 그리는 덕에 등록 전에는 이 자리가 비어 있으니, 첫 기록의
+    피드백이 "빈 자리에 빨간 숫자가 생기는 것" 이었던 셈이다.
+
+    수지가 음수인 이유는 둘이고 사용자가 할 일도 다르다 — 수입을 아직 안 적었거나,
+    적었는데 그보다 많이 썼거나. 앞은 "이 달에 쓴 돈" 이 그 자체로 답이고 경고할 일이
+    아니다. 빨강과 − 기호는 뒤에만 쓴다.
+
+    한 줄 변형(variant='line')은 그대로 둔다. 그건 통계 화면에서 이미 "이번 달 지출"
+    대표 숫자 아래 붙는 근거 줄이라, 같은 규칙을 넣으면 라벨이 그 대표와 겹친다.
+  */
+  /** 수입을 적었는데 그보다 많이 썼다. 이때만 초과다. */
+  const overspent = data.net < 0 && data.income > 0
+  /** 수입이 없는 달. 음수 수지를 보여줄 자리가 아니라 지출 총액으로 답한다. */
+  const expenseOnly = data.net < 0 && data.income === 0
+
+  /*
     월급 위젯의 대표 숫자와 같은 모양으로 그린다 (SalaryWidget). 같은 자리에서
     번갈아 나타나는 두 값이라 크기·자간·단위 위치가 다르면 자리가 흔들린다.
     근거(수입·지출)는 여기서도 유지한다 — 없으면 "통장 잔고" 로 읽힌다.
@@ -66,19 +91,34 @@ export function MonthSummary({
 
     return (
       <div className="mt-4">
-        <p className="text-label text-ink-muted">{monthNumber}월 남은 금액</p>
+        <p className="text-label text-ink-muted">
+          {monthNumber}월 {expenseOnly ? '지출' : overspent ? '초과' : '남은 금액'}
+        </p>
         <p
           className={`mt-0.5 text-hero font-semibold tabular-nums ${
-            positive ? 'text-ink' : 'text-danger'
+            overspent ? 'text-danger' : 'text-ink'
           }`}
         >
-          {positive ? '' : '−'}
+          {overspent && '−'}
           {formatAmount(Math.abs(data.net))}
           <span className="ml-0.5 text-base font-normal text-ink-muted">원</span>
         </p>
-        <p className="mt-1 text-caption tabular-nums text-ink-muted">
-          수입 {abbrevAmount(data.income)} · 지출 {abbrevAmount(data.expense)}
-        </p>
+        {/*
+          수입이 없는 달에는 근거 줄을 뺀다. "수입 0 · 지출 11,500" 은 위 대표 숫자를
+          그대로 되풀이하는 줄이라(라벨이 이미 '지출' 이라고 말한다) 같은 값이 40px
+          안에 두 번 선다. 근거를 붙이는 이유가 "통장 잔고로 읽히는 것을 막는 것"
+          인데, 라벨이 지출이면 그 오해 자체가 없다.
+
+          축약하지 않는다. abbrevAmount 는 좁은 줄에서 자릿수를 줄이는 장치인데
+          (format.ts) 이 줄은 자기 줄을 다 쓰므로 좁지 않았고, 바로 위 대표 숫자가
+          원 단위인 채로 아래 줄만 만 단위여서 −62,750 밑에 "지출 6만" 이 붙었다 —
+          3천원 가까이가 사라지고 한 줄 안에서 "수입 0"(원)과 "지출 6만"(만)이 섞였다.
+        */}
+        {!expenseOnly && (
+          <p className="mt-1 text-caption tabular-nums text-ink-muted">
+            수입 {formatAmount(data.income)} · 지출 {formatAmount(data.expense)}
+          </p>
+        )}
       </div>
     )
   }
